@@ -1,0 +1,847 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<meta name="description" content="Sports Golf: a daily sports-stats trivia game. Name the player at each rank, nine holes a day.">
+<meta property="og:title" content="Sports Golf"><meta property="og:description" content="Name the player at each rank. Nine holes. Every day.">
+<link rel="icon" href="data:image/svg+xml,<svg xmlns=%22http://www.w3.org/2000/svg%22 viewBox=%220 0 100 100%22><text y=%22.9em%22 font-size=%2290%22>⛳</text></svg>">
+<title>Sports Golf</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link href="https://fonts.googleapis.com/css2?family=Bowlby+One+SC&family=Barlow+Condensed:wght@500;600;700;800&family=Barlow:wght@400;500;600&display=swap" rel="stylesheet">
+<style>
+:root{
+  --fair:#2f7d44; --fair-d:#1d5530; --rough:#256b39; --deep:#0f3a22; --green:#5fb55a; --green-l:#7fcf72;
+  --sand:#ecd9a0; --sand-d:#cdb46f; --water:#3d8fd1; --water-d:#2a6fae; --cream:#fbf5e6; --ink:#16241b;
+  --flag:#e23b3b; --gold:#f4b73a; --muted:#5d6f63; --line:#d9cfb6;
+}
+*{box-sizing:border-box}
+html,body{margin:0;background:var(--deep);color:var(--ink);font-family:Barlow,system-ui,sans-serif}
+body{min-height:100vh;background:
+  radial-gradient(1200px 600px at 50% -10%, #2b7a46 0%, transparent 60%),
+  repeating-linear-gradient(135deg, #123f26 0 22px, #10391f 22px 44px);}
+.wrap{max-width:980px;margin:0 auto;padding:18px 14px 40px}
+header.top{display:flex;align-items:center;justify-content:space-between;gap:12px;color:var(--cream);margin-bottom:14px}
+.logo{display:flex;align-items:center;gap:10px}
+.logo h1{font-family:'Bowlby One SC',sans-serif;font-size:30px;margin:0;letter-spacing:.5px;line-height:1;text-shadow:0 3px 0 rgba(0,0,0,.35)}
+.logo small{display:block;font-family:'Barlow Condensed';font-weight:600;letter-spacing:2px;text-transform:uppercase;color:var(--gold);font-size:13px;margin-top:3px}
+.badge{font-family:'Barlow Condensed';font-weight:700;letter-spacing:1px;text-transform:uppercase;font-size:14px;background:rgba(0,0,0,.25);border:1px solid rgba(255,255,255,.15);padding:6px 10px;border-radius:999px}
+.card{background:var(--cream);border-radius:16px;box-shadow:0 10px 0 rgba(0,0,0,.18),0 20px 40px rgba(0,0,0,.25)}
+/* progress course strip */
+.strip{position:relative;height:64px;margin:4px 0 14px;color:var(--cream)}
+.strip svg{width:100%;height:100%;overflow:visible}
+.strip .lbl{font-family:'Barlow Condensed';font-weight:700;font-size:12px;fill:var(--cream)}
+/* layout */
+.play{display:grid;grid-template-columns:minmax(0,1fr) 360px;gap:16px;align-items:start}
+@media (max-width:820px){.play{grid-template-columns:1fr}.course-box{order:-1}}
+.qcard{padding:20px 20px 18px}
+.holehead{display:flex;justify-content:space-between;align-items:baseline;border-bottom:2px dashed var(--line);padding-bottom:10px;margin-bottom:14px}
+.holehead .n{font-family:'Bowlby One SC';font-size:26px;color:var(--fair-d)}
+.holehead .yd{font-family:'Barlow Condensed';font-weight:700;font-size:16px;color:var(--muted);text-transform:uppercase;letter-spacing:1px}
+.sport{display:inline-block;font-family:'Barlow Condensed';font-weight:800;letter-spacing:1.5px;font-size:13px;padding:3px 9px;border-radius:6px;color:#fff;margin-bottom:10px}
+.s-NFL{background:#1d3f8f}.s-CFB{background:#8f2d1d}.s-NBA{background:#c8501e}.s-CBB{background:#6b2fa0}.s-NHL{background:#1b1b1b}.s-MLB{background:#a3122a}
+.question{font-family:'Barlow Condensed';font-weight:700;font-size:30px;line-height:1.08;margin:0 0 16px}
+.question .rk{color:var(--flag);white-space:nowrap}
+.swing{display:flex;gap:8px}
+.swing input{flex:1;font:600 20px Barlow;padding:13px 14px;border-radius:12px;border:2px solid var(--line);background:#fff;outline:none;min-width:0}
+.swing input:focus{border-color:var(--fair)}
+.btn{font-family:'Bowlby One SC';font-size:18px;letter-spacing:.5px;border:0;border-radius:12px;padding:12px 18px;cursor:pointer;color:#fff;background:var(--fair);box-shadow:0 5px 0 var(--fair-d);transition:transform .08s,box-shadow .08s}
+.btn:active{transform:translateY(4px);box-shadow:0 1px 0 var(--fair-d)}
+.btn:disabled{opacity:.5;cursor:default}
+.btn.gold{background:var(--gold);color:var(--ink);box-shadow:0 5px 0 #b9831d}
+.btn.ghost{background:transparent;color:var(--fair-d);box-shadow:none;border:2px solid var(--fair);font-size:15px;padding:9px 14px}
+.hint{font-size:13px;color:var(--muted);margin-top:8px}
+.result{margin-top:16px;padding:16px;border-radius:14px;background:#fff;border:2px solid var(--line);display:none}
+.result.show{display:block;animation:pop .35s ease-out}
+@keyframes pop{from{transform:scale(.96);opacity:0}to{transform:scale(1);opacity:1}}
+.call{font-family:'Bowlby One SC';font-size:34px;line-height:1;margin:0 0 4px}
+.call.hio{color:var(--gold);text-shadow:0 2px 0 #9b6c12}
+.call.ok{color:var(--fair)} .call.meh{color:#c77b12} .call.bad{color:var(--flag)} .call.water{color:var(--water-d)}
+.quip{font-style:italic;color:var(--muted);margin:0 0 12px}
+.reveal{display:grid;grid-template-columns:1fr 1fr;gap:8px 14px;font-size:15px}
+.reveal .k{font-family:'Barlow Condensed';font-weight:700;color:var(--muted);text-transform:uppercase;letter-spacing:1px;font-size:12px}
+.reveal .v{font-weight:600}
+.reveal .big{grid-column:1/-1;font-family:'Barlow Condensed';font-weight:800;font-size:26px;line-height:1}
+.reveal a{color:var(--fair-d);font-weight:700}
+.next{margin-top:14px;display:flex;justify-content:flex-end}
+/* course */
+.course-box{padding:10px;position:relative}
+.course-box svg{width:100%;height:auto;display:block;border-radius:12px}
+.stroke-badge{position:absolute;top:18px;left:18px;background:rgba(15,58,34,.85);color:var(--cream);font-family:'Barlow Condensed';font-weight:700;padding:4px 10px;border-radius:8px;font-size:14px;letter-spacing:1px}
+/* scorecard */
+.scorecard{margin-top:16px;padding:14px;overflow-x:auto}
+.scorecard table{border-collapse:collapse;width:100%;min-width:520px;font-family:'Barlow Condensed';font-weight:700;text-align:center}
+.scorecard th,.scorecard td{border:1px solid var(--line);padding:6px 4px;font-size:16px}
+.scorecard th{background:var(--fair-d);color:var(--cream);font-size:13px;letter-spacing:1px}
+.scorecard td.lab{text-align:left;padding-left:8px;color:var(--muted);font-size:13px;text-transform:uppercase}
+.sc-hio{background:#ffe7a6}.sc-ok{background:#dff2d8}.sc-par{background:#eef0ea}.sc-meh{background:#fdebc8}.sc-bad{background:#fbd5d1}.sc-water{background:#d4e7f8}
+.field{margin:14px 0 6px}.field label{display:block;font-family:'Barlow Condensed';font-weight:700;letter-spacing:1px;text-transform:uppercase;font-size:13px;color:var(--muted);margin-bottom:6px}
+.field input{width:100%;max-width:320px;font:600 18px Barlow;padding:10px 12px;border-radius:10px;border:2px solid var(--line);background:#fff;outline:none}.field input:focus{border-color:var(--fair)}
+.chips{display:flex;flex-wrap:wrap;gap:8px}.chips button{font-family:'Barlow Condensed';font-weight:800;letter-spacing:1px;font-size:15px;padding:7px 12px;border-radius:999px;border:2px solid var(--line);background:#fff;color:var(--muted);cursor:pointer}
+.chips button.on{color:#fff;border-color:transparent}.chips button.on.c-NFL{background:#1d3f8f}.chips button.on.c-CFB{background:#8f2d1d}.chips button.on.c-NBA{background:#c8501e}.chips button.on.c-CBB{background:#6b2fa0}.chips button.on.c-NHL{background:#1b1b1b}.chips button.on.c-MLB{background:#a3122a}
+.coursename{font-family:'Barlow Condensed';font-weight:700;letter-spacing:2px;text-transform:uppercase;color:var(--gold);font-size:14px;margin:0 0 4px}
+.strikes{display:flex;align-items:center;gap:10px;margin-top:10px;flex-wrap:wrap}.strikes #strikeMsg{flex:1;min-width:160px}
+.strikes .dot{display:inline-block;width:22px;height:22px;border-radius:50%;border:2px solid var(--line);margin-right:4px;text-align:center;line-height:18px;font-weight:800;color:#fff;font-size:13px}.strikes .dot.x{background:var(--flag);border-color:var(--flag)}
+#giveUpBtn{font-size:13px;padding:6px 10px}
+.err{color:var(--flag);font-weight:600;font-size:14px;min-height:18px;margin-top:6px}
+.scorecard td.cur{outline:3px solid var(--gold);outline-offset:-3px}
+/* screens */
+.screen{display:none}.screen.on{display:block}
+.intro{padding:26px 24px;display:grid;grid-template-columns:1.2fr 1fr;gap:24px}
+@media (max-width:820px){.intro{grid-template-columns:1fr}}
+@media (max-width:480px){.logo small{display:none}.logo h1{font-size:26px}.question{font-size:25px}}
+.intro h2{font-family:'Bowlby One SC';font-size:34px;margin:0 0 6px;color:var(--fair-d);line-height:1}
+.intro p{margin:0 0 10px;line-height:1.45}
+.rules{list-style:none;padding:0;margin:14px 0;display:grid;gap:8px}
+.rules li{display:flex;gap:10px;align-items:flex-start;font-size:15px}
+.rules b{font-family:'Barlow Condensed';font-size:17px}
+.chip{flex:none;font-family:'Barlow Condensed';font-weight:800;min-width:64px;text-align:center;border-radius:6px;padding:2px 6px;font-size:14px}
+.lb{padding:18px}
+.lb h3,.final h3{font-family:'Bowlby One SC';margin:0 0 10px;color:var(--fair-d);font-size:22px}
+.lb ol{list-style:none;margin:0;padding:0}
+.lb li{display:flex;justify-content:space-between;gap:8px;padding:8px 10px;border-bottom:1px dashed var(--line);font-weight:600}
+.lb li.me{background:#fff6d8;border-radius:8px}
+.lb .pos{font-family:'Barlow Condensed';font-weight:800;width:28px;color:var(--muted)}
+.lb .nm{flex:1;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+.lb .sc{font-family:'Barlow Condensed';font-weight:800;font-size:18px}
+.lb .empty{color:var(--muted);font-style:italic;padding:8px 0}
+.final{padding:22px 24px}
+.final .total{font-family:'Bowlby One SC';font-size:64px;line-height:1;color:var(--fair-d)}
+.final .sub{font-family:'Barlow Condensed';font-weight:700;letter-spacing:1px;text-transform:uppercase;color:var(--muted)}
+.sharebox{white-space:pre;font-family:ui-monospace,Menlo,monospace;background:#fff;border:2px dashed var(--line);border-radius:12px;padding:12px;margin:14px 0;font-size:15px;line-height:1.35;overflow-x:auto}
+.foot{color:rgba(251,245,230,.7);font-size:12px;margin-top:18px;line-height:1.5}
+.foot a{color:var(--gold)}
+.toast{position:fixed;left:50%;bottom:24px;transform:translateX(-50%) translateY(120px);background:var(--ink);color:var(--cream);padding:10px 16px;border-radius:999px;font-weight:600;transition:transform .3s;z-index:9}
+.toast.on{transform:translateX(-50%) translateY(0)}
+.shake{animation:shake .4s}
+@keyframes shake{25%{transform:translateX(-6px)}50%{transform:translateX(6px)}75%{transform:translateX(-3px)}}
+#confetti{position:fixed;inset:0;pointer-events:none;z-index:8}
+</style>
+</head>
+<body>
+<canvas id="confetti"></canvas>
+<div class="wrap">
+  <header class="top">
+    <div class="logo">
+      <svg width="44" height="44" viewBox="0 0 44 44" aria-hidden="true"><circle cx="22" cy="22" r="21" fill="#fbf5e6"/><g fill="#d9cfb6"><circle cx="15" cy="15" r="2"/><circle cx="23" cy="12" r="2"/><circle cx="30" cy="17" r="2"/><circle cx="13" cy="24" r="2"/><circle cx="21" cy="21" r="2"/><circle cx="29" cy="26" r="2"/><circle cx="17" cy="31" r="2"/><circle cx="25" cy="31" r="2"/></g></svg>
+      <div><h1>Sports Golf</h1><small>Rankings · Nine holes · Every day</small></div>
+    </div>
+    <div class="badge" id="courseBadge">Course #1</div>
+  </header>
+
+  <!-- INTRO -->
+  <section class="screen on" id="sIntro">
+    <div class="card intro">
+      <div>
+        <p class="coursename" id="courseName"></p>
+        <h2 id="introTitle">Today's Round</h2>
+        <p>Nine holes, nine stat leaderboards. Each hole asks for the player at a specific rank. Type a name and swing. The closer you are to the right spot, the better your score.</p>
+        <ul class="rules">
+          <li><span class="chip sc-hio">−3</span><span><b>Hole in one:</b> the exact player.</span></li>
+          <li><span class="chip sc-ok">−2 / −1</span><span><b>Eagle</b> 1–5 spots off · <b>Birdie</b> 6–10 off</span></li>
+          <li><span class="chip sc-par">E</span><span><b>Par</b> 11–20 spots off</span></li>
+          <li><span class="chip sc-meh">+1 / +2</span><span><b>Bogey</b> 21–30 off · <b>Double bogey</b> 31–40 off</span></li>
+          <li><span class="chip sc-bad">+3</span><span><b>Triple bogey</b> 41+ off.</span></li>
+          <li><span class="chip sc-water">3 strikes</span><span>A name that isn't on the leaderboard is a <b>strike</b>, and you swing again. Three strikes or <b>Give up</b> = <b>splash</b> (+3).</span></li>
+          <li><span class="chip sc-par">Ties</span><span>Broken by <b>total spots off</b> (a splash counts as 100), then fewest strikes.</span></li>
+        </ul>
+        <div class="field"><label for="nameIn">Your name</label><input id="nameIn" maxlength="20" placeholder="e.g. Tiger" autocomplete="nickname"></div>
+        <div class="field"><label>Sports in your round</label><div class="chips" id="sportChips"></div></div>
+        <p class="hint" id="mixHint">Everyone who picks the same sports gets the same course today.</p>
+        <p class="hint">There's no list of names to pick from, and the game never tells you who's on a list. Type the full name; small typos are forgiven.</p>
+        <div class="err" id="introErr"></div>
+        <div style="display:flex;gap:10px;flex-wrap:wrap;margin-top:14px">
+          <button class="btn gold" id="teeBtn">Tee off ⛳</button>
+          <button class="btn ghost" id="viewFinal" style="display:none">See my scorecard</button>
+          <button class="btn ghost" id="resetBtn" style="display:none">↺ Reset my round</button>
+        </div>
+      </div>
+      <div class="lb" style="padding:0">
+        <h3>Today's leaderboard</h3>
+        <p class="hint" id="lbMixIntro" style="margin:-4px 0 8px"></p>
+        <ol id="lbIntro"><li class="empty">Loading…</li></ol>
+      </div>
+    </div>
+  </section>
+
+  <!-- PLAY -->
+  <section class="screen" id="sPlay">
+    <div class="strip"><svg id="strip" viewBox="0 0 900 64" preserveAspectRatio="none"></svg></div>
+    <div class="play">
+      <div>
+        <div class="card qcard" id="qcard">
+          <div class="holehead"><span class="n" id="holeN">Hole 1</span><span class="yd" id="holeYd"></span></div>
+          <span class="sport" id="sportTag">NBA</span>
+          <p class="question" id="question"></p>
+          <form class="swing" id="swingForm" autocomplete="off">
+            <label for="guess" style="position:absolute;left:-9999px">Player name</label>
+            <input id="guess" placeholder="Type a player's full name" autocomplete="off" spellcheck="false">
+            <button class="btn" id="swingBtn" type="submit">Swing</button>
+          </form>
+          <div class="strikes"><span id="strikeDots"></span><span id="strikeMsg" class="hint" style="margin:0"></span><button type="button" class="btn ghost" id="giveUpBtn">Give up 🏳️</button></div>
+          <div class="result" id="result"></div>
+        </div>
+      </div>
+      <div class="card course-box">
+        <div class="stroke-badge" id="strokeBadge"></div>
+        <svg id="hole" viewBox="0 0 360 520" role="img" aria-label="Golf hole"></svg>
+      </div>
+    </div>
+    <div class="card scorecard"><table id="scTable"></table></div>
+  </section>
+
+  <!-- FINAL -->
+  <section class="screen" id="sFinal">
+    <div class="card final" style="display:grid;grid-template-columns:1.1fr 1fr;gap:24px" id="finalGrid">
+      <div>
+        <div class="sub" id="finalSub">Final score</div>
+        <div class="total" id="finalTotal">+0</div>
+        <div class="sub" id="finalVerdict" style="color:var(--fair);margin-top:6px"></div>
+        <div class="sharebox" id="shareText"></div>
+        <div style="display:flex;gap:10px;flex-wrap:wrap">
+          <button class="btn gold" id="copyBtn">Copy result</button>
+          <button class="btn ghost" id="reviewBtn">Review holes</button>
+          <button class="btn ghost" id="resetBtn2" style="display:none">↺ Reset my round</button>
+        </div>
+        <p class="hint" id="postNote"></p>
+      </div>
+      <div class="lb" style="padding:0">
+        <h3>Today's leaderboard</h3>
+        <p class="hint" id="lbMixFinal" style="margin:-4px 0 8px"></p>
+        <ol id="lbFinal"><li class="empty">Loading…</li></ol>
+      </div>
+    </div>
+    <div class="card scorecard"><table id="scTable2"></table></div>
+    <div class="card" id="reviewList" style="margin-top:16px;padding:16px;display:none"></div>
+  </section>
+
+  <div class="foot" id="foot"></div>
+</div>
+<div class="toast" id="toast"></div>
+
+<script>
+const CATEGORIES = [{"id":"nba_pts","sport":"NBA","q":"all-time in career points (NBA/ABA regular season)","unit":"PTS","scope":"career","src":"Basketball Reference","url":"https://www.basketball-reference.com/leaders/pts_career.html","maxTarget":90,"rows":[["LeBron James",43606,1,""],["Kareem Abdul-Jabbar",38387,2,""],["Karl Malone",36928,3,""],["Kobe Bryant",33643,4,""],["Kevin Durant",32895,5,""],["Michael Jordan",32292,6,""],["Dirk Nowitzki",31560,7,""],["Wilt Chamberlain",31419,8,""],["Julius Erving",30026,9,""],["Moses Malone",29580,10,""],["James Harden",29559,11,""],["Shaquille O'Neal",28596,12,""],["Carmelo Anthony",28289,13,""],["Dan Issel",27482,14,""],["Elvin Hayes",27313,15,""],["Russell Westbrook",27176,16,""],["Hakeem Olajuwon",26946,17,""],["DeMar DeRozan",26810,18,""],["Stephen Curry",26806,19,""],["Oscar Robertson",26710,20,""],["Dominique Wilkins",26668,21,""],["George Gervin",26595,22,""],["Tim Duncan",26496,23,""],["Paul Pierce",26397,24,""],["John Havlicek",26395,25,""],["Kevin Garnett",26071,26,""],["Vince Carter",25728,27,""],["Alex English",25613,28,""],["Rick Barry",25279,29,""],["Reggie Miller",25279,29,""],["Jerry West",25192,31,""],["Artis Gilmore",24941,32,""],["Patrick Ewing",24815,33,""],["Ray Allen",24505,34,""],["Allen Iverson",24368,35,""],["Charles Barkley",23757,36,""],["Robert Parish",23334,37,""],["Adrian Dantley",23177,38,""],["Dwyane Wade",23165,39,""],["Elgin Baylor",23149,40,""],["Chris Paul",23058,41,""],["Damian Lillard",22845,42,""],["Clyde Drexler",22195,43,""],["Giannis Antetokounmpo",21907,44,""],["Gary Payton",21813,45,""],["Larry Bird",21791,46,""],["Hal Greer",21586,47,""],["Walt Bellamy",20941,48,""],["Pau Gasol",20894,49,""],["Bob Pettit",20880,50,""],["David Robinson",20790,51,""],["LaMarcus Aldridge",20558,52,""],["Mitch Richmond",20497,53,""],["Joe Johnson",20407,54,""],["Tom Chambers",20049,55,""],["Antawn Jamison",20042,56,""],["John Stockton",19711,57,""],["Anthony Davis",19681,58,""],["Bernard King",19655,59,""],["Clifford Robinson",19591,60,""],["Paul George",19565,61,""],["Walter Davis",19521,62,""],["Dwight Howard",19485,63,""],["Tony Parker",19473,64,""],["Terry Cummings",19460,65,""],["Jamal Crawford",19419,66,""],["Bob Lanier",19248,67,""],["Eddie Johnson",19202,68,""],["Gail Goodrich",19181,69,""],["Reggie Theus",19015,70,""],["Dale Ellis",19004,71,""],["Scottie Pippen",18940,72,""],["Jason Terry",18881,73,""],["Chet Walker",18831,74,""],["Isiah Thomas",18822,75,""],["Bob McAdoo",18787,76,""],["Kyrie Irving",18683,77,""],["Zach Randolph",18578,78,""],["Mark Aguirre",18458,79,""],["Dolph Schayes",18438,80,""],["Devin Booker",18418,81,""],["Tracy McGrady",18381,82,""],["Glen Rice",18336,83,""],["Dave Bing",18327,84,""],["Brook Lopez",18320,85,""],["Nikola Jokić",18270,86,""],["World B. Free",17955,87,""],["Calvin Murphy",17949,88,""],["Lou Hudson",17940,89,""],["Chris Mullin",17911,90,""],["Lenny Wilkens",17772,91,""],["Bailey Howell",17770,92,""],["Nikola Vučević",17716,93,""],["Magic Johnson",17707,94,""],["Shawn Marion",17700,95,""],["Rudy Gay",17642,96,""],["Rolando Blackman",17623,97,""],["Otis Thorpe",17600,98,""],["Klay Thompson",17530,99,""],["Jason Kidd",17529,100,""],["Earl Monroe",17454,101,""],["Jrue Holiday",17440,102,""],["Ron Boone",17437,103,""],["Steve Nash",17387,104,""],["Kevin McHale",17335,105,""],["Bradley Beal",17306,106,""],["Michael Finley",17306,106,""],["Jack Sikma",17287,108,""],["Kevin Willis",17253,109,""],["Jeff Malone",17231,110,""],["Chris Bosh",17189,111,""],["Chris Webber",17182,112,""],["Grant Hill",17137,113,""],["Spencer Haywood",17111,114,""],["CJ McCollum",17041,115,""],["George McGinnis",17009,116,""],["Bob Cousy",16960,117,""],["Elton Brand",16827,118,""],["Buck Williams",16784,119,""],["Mike Conley",16727,120,""],["Latrell Sprewell",16712,121,""],["Karl-Anthony Towns",16665,122,""],["Jimmy Butler",16658,123,""],["Kawhi Leonard",16585,124,""],["Tiny Archibald",16481,125,""],["Tobias Harris",16440,126,""],["Jerry Stackhouse",16409,127,""],["Joe Dumars",16401,128,""],["Kyle Lowry",16373,129,""],["James Worthy",16320,130,""]]},{"id":"nba_ast","sport":"NBA","q":"all-time in career assists (NBA/ABA, regular season + playoffs)","unit":"AST","scope":"career","src":"Basketball Reference","url":"https://www.basketball-reference.com/leaders/ast_career_c.html","maxTarget":90,"rows":[["John Stockton",17645,1,""],["LeBron James",14260,2,""],["Chris Paul",13785,3,""],["Jason Kidd",13354,4,""],["Magic Johnson",12487,5,""],["Steve Nash",11396,6,""],["Russell Westbrook",11306,7,""],["Mark Jackson",11239,8,""],["Oscar Robertson",10656,9,""],["James Harden",10182,10,""],["Isiah Thomas",10048,11,""],["Gary Payton",9777,12,""],["Andre Miller",8804,13,""],["Rajon Rondo",8720,14,""],["Rod Strickland",8377,15,""],["Maurice Cheeks",8314,16,""],["Tony Parker",8179,17,""],["Bob Cousy",7892,18,""],["Kyle Lowry",7840,19,""],["Terry Porter",7784,20,""],["Stephen Curry",7735,21,""],["Kevin Johnson",7646,22,""],["Lenny Wilkens",7583,23,""],["Tim Hardaway",7477,24,""],["Mike Conley",7462,25,""],["Deron Williams",7449,26,""],["Jrue Holiday",7446,27,""],["Kobe Bryant",7346,28,""],["Jerry West",7208,29,""],["Guy Rodgers",7203,30,""],["Scottie Pippen",7183,31,""],["Derek Harper",7090,32,""],["Clyde Drexler",7016,33,""],["Nikola Jokić",6956,34,""],["John Havlicek",6939,35,""],["Norm Nixon",6851,36,""],["Muggsy Bogues",6833,37,""],["Tiny Archibald",6782,38,""],["Larry Bird",6757,39,""],["John Lucas",6673,40,""],["Michael Jordan",6655,41,""],["Stephon Marbury",6617,42,""],["Dwyane Wade",6571,43,""],["Reggie Theus",6550,44,""],["Damian Lillard",6539,45,""],["Sam Cassell",6531,46,""],["Dennis Johnson",6505,47,""],["Chauncey Billups",6467,48,""],["Kareem Abdul-Jabbar",6427,49,""],["Draymond Green",6427,49,""],["Avery Johnson",6408,51,""],["Baron Davis",6336,52,""],["Mookie Blaylock",6329,53,""],["Nick Van Exel",6119,54,""],["John Wall",6099,55,""],["Kevin Durant",6050,56,""],["Allen Iverson",6049,57,""],["Julius Erving",6017,58,""],["Mike Bibby",5937,59,""],["Kevin Garnett",5916,60,""],["Karl Malone",5858,61,""],["Jeff Hornacek",5806,62,""],["Jason Terry",5790,63,""],["Andre Iguodala",5765,64,""],["Walt Frazier",5639,65,""],["Damon Stoudamire",5604,66,""],["Dave Bing",5530,67,""],["Rickey Green",5515,68,""],["Kevin Porter",5505,69,""],["Norm Van Lier",5451,70,""],["DeMar DeRozan",5447,71,""],["Rick Barry",5408,72,""],["Nate McMillan",5398,73,""],["Sleepy Floyd",5394,74,""],["Joe Johnson",5370,75,""],["Doc Rivers",5368,76,""],["Louie Dampier",5336,77,""],["Kenny Anderson",5331,78,""],["Wilt Chamberlain",5316,79,""],["Paul Pierce",5287,80,""],["José Calderón",5273,81,""],["Ricky Rubio",5248,82,""],["Trae Young",5245,83,""],["Raymond Felton",5242,84,""],["Mark Price",5190,85,""],["Gail Goodrich",5138,86,""],["Joe Dumars",5124,87,""],["Gus Williams",5066,88,""],["Vince Carter",5009,89,""],["Giannis Antetokounmpo",5003,90,""],["Fat Lever",4993,91,""],["Tim Duncan",4989,92,""],["Jeff Teague",4943,93,""],["Hal Greer",4933,94,""],["Kyrie Irving",4883,95,""],["Brad Davis",4876,96,""],["Bill Russell",4870,97,""],["Danny Ainge",4855,98,""],["Jason Williams",4832,99,""],["Manu Ginóbili",4828,100,""],["Ray Allen",4810,101,""],["Dennis Schröder",4794,102,""],["Luka Dončić",4750,103,""],["Jameer Nelson",4712,104,""],["Don Buse",4709,105,""],["Jamal Crawford",4702,106,""],["Charles Barkley",4697,107,""],["Alex English",4644,108,""],["Randy Smith",4644,108,""],["Sherman Douglas",4642,110,""],["Eric Snow",4618,111,""],["Calvin Murphy",4615,112,""],["Goran Dragić",4611,113,""],["Terrell Brandon",4570,114,""],["Jimmy Butler",4565,115,""],["Dick McGuire",4555,116,""],["Jo Jo White",4547,117,""],["Spud Webb",4540,118,""],["Jay Humphries",4526,119,""],["Brevin Knight",4524,120,""],["Kirk Hinrich",4522,121,""],["Reggie Miller",4498,122,""],["Richie Guerin",4425,123,""],["Vern Fleming",4407,124,""],["Tracy McGrady",4403,125,""],["Derek Fisher",4402,126,""],["Grant Hill",4392,127,""],["Al Horford",4391,128,""],["Kenny Smith",4378,129,""],["Michael Cooper",4369,130,""]]},{"id":"nhl_goals","sport":"NHL","q":"all-time in career goals (NHL regular season)","unit":"G","scope":"career","src":"Hockey Reference","url":"https://www.hockey-reference.com/leaders/goals_career.html","maxTarget":90,"rows":[["Alex Ovechkin",930,1,""],["Wayne Gretzky",894,2,""],["Gordie Howe",801,3,""],["Jaromír Jágr",766,4,""],["Brett Hull",741,5,""],["Marcel Dionne",731,6,""],["Phil Esposito",717,7,""],["Mike Gartner",708,8,""],["Mark Messier",694,9,""],["Steve Yzerman",692,10,""],["Mario Lemieux",690,11,""],["Teemu Selänne",684,12,""],["Luc Robitaille",668,13,""],["Sidney Crosby",660,14,""],["Brendan Shanahan",656,15,""],["Dave Andreychuk",640,16,""],["Steven Stamkos",636,17,""],["Jarome Iginla",625,18,""],["Joe Sakic",625,18,""],["Bobby Hull",610,20,""],["Dino Ciccarelli",608,21,""],["Jari Kurri",601,22,""],["Mark Recchi",577,23,""],["Mike Bossy",573,24,""],["Patrick Marleau",566,25,""],["Joe Nieuwendyk",564,26,""],["Mats Sundin",564,26,""],["Mike Modano",561,28,""],["Guy Lafleur",560,29,""],["Johnny Bucyk",556,30,""],["Ron Francis",549,31,""],["Michel Goulet",548,32,""],["Maurice Richard",544,33,""],["Stan Mikita",541,34,""],["Evgeni Malkin",539,35,""],["Keith Tkachuk",538,36,""],["Frank Mahovlich",533,37,""],["John Tavares",527,38,""],["Marián Hossa",525,39,""],["Bryan Trottier",524,40,""],["Pat Verbeek",522,41,""],["Dale Hawerchuk",518,42,""],["Pierre Turgeon",515,43,""],["Jeremy Roenick",513,44,""],["Gilbert Perreault",512,45,""],["Patrick Kane",509,46,""],["Jean Béliveau",507,47,""],["Peter Bondra",503,48,""],["Joe Mullen",502,49,""],["Lanny McDonald",500,50,""],["Glenn Anderson",498,51,""],["Jean Ratelle",491,52,""],["Norm Ullman",490,53,""],["Brian Bellows",485,54,""],["Darryl Sittler",484,55,""],["Sergei Fedorov",483,56,""],["Joe Pavelski",476,57,""],["Bernie Nicholls",475,58,""],["Alexander Mogilny",473,59,""],["Denis Savard",473,59,""],["Pat LaFontaine",468,61,""],["Corey Perry",467,62,""],["Alex Delvecchio",456,63,""],["Theo Fleury",455,64,""],["Eric Staal",455,64,""],["Leon Draisaitl",454,66,""],["Rod Brind'Amour",452,67,""],["Anže Kopitar",452,67,""],["Brad Marchand",452,67,""],["Doug Gilmour",450,70,""],["Peter Šťastný",450,70,""],["Rick Middleton",448,72,""],["Daniel Alfredsson",444,73,""],["Ilya Kovalchuk",443,74,""],["Jeff Carter",442,75,""],["Steve Larmer",441,76,""],["Rick Vaive",441,76,""],["Auston Matthews",440,78,""],["Rick Tocchet",440,78,""],["Gary Roberts",438,80,""],["Pavel Bure",437,81,""],["Rick Nash",437,81,""],["Zach Parise",434,83,""],["Vincent Damphousse",432,84,""],["Dave Taylor",431,85,""],["Alex Kovalev",430,86,""],["Nathan MacKinnon",430,86,""],["Joe Thornton",430,86,""],["Bill Guerin",429,89,""],["David Pastrňák",429,89,""],["Yvan Cournoyer",428,91,""],["Patrice Bergeron",427,92,""],["Brian Propp",425,93,""],["Steve Shutt",424,94,""],["Owen Nolan",422,95,""],["Vincent Lecavalier",421,96,""],["Connor McDavid",421,96,""],["Stéphane Richer",421,96,""],["Steve Thomas",421,96,""],["Bill Barber",420,100,""],["Jamie Benn",418,101,""],["Jason Arnott",417,102,""],["Tony Amonte",416,103,""],["Phil Kessel",413,104,""],["John MacLean",413,104,""],["Garry Unger",413,104,""],["Ray Bourque",410,107,""],["Nikita Kucherov",409,108,""],["Patrik Eliáš",408,109,""],["Ray Ferraro",408,109,""],["Marián Gáborík",407,111,""],["Rod Gilbert",406,112,""],["John LeClair",406,112,""],["Shane Doan",402,114,""],["Paul Kariya",402,114,""],["John Ogrodnick",402,114,""],["Paul Coffey",396,117,""],["Dave Keon",396,117,""],["Pierre Larouche",395,119,""],["Markus Näslund",395,119,""],["Cam Neely",395,119,""],["Tomas Sandström",394,122,""],["Bernie Geoffrion",393,123,""],["Daniel Sedin",393,123,""],["Dean Prentice",391,125,""],["Jean Pronovost",391,125,""],["Martin St. Louis",391,125,""],["Matt Duchene",387,128,""],["Ryan Smyth",386,129,""],["Ray Whitney",385,130,""]]},{"id":"nhl_pts","sport":"NHL","q":"all-time in career points (NHL regular season)","unit":"PTS","scope":"career","src":"Hockey Reference","url":"https://www.hockey-reference.com/leaders/points_career.html","maxTarget":85,"rows":[["Wayne Gretzky",2857,1,""],["Jaromír Jágr",1921,2,""],["Mark Messier",1887,3,""],["Gordie Howe",1850,4,""],["Ron Francis",1798,5,""],["Sidney Crosby",1774,6,""],["Marcel Dionne",1771,7,""],["Steve Yzerman",1755,8,""],["Mario Lemieux",1723,9,""],["Alex Ovechkin",1692,10,""],["Joe Sakic",1641,11,""],["Phil Esposito",1590,12,""],["Ray Bourque",1579,13,""],["Joe Thornton",1539,14,""],["Mark Recchi",1533,15,""],["Paul Coffey",1531,16,""],["Stan Mikita",1467,17,""],["Teemu Selänne",1457,18,""],["Bryan Trottier",1425,19,""],["Evgeni Malkin",1424,20,""],["Adam Oates",1420,21,""],["Doug Gilmour",1414,22,""],["Patrick Kane",1410,23,""],["Dale Hawerchuk",1409,24,""],["Jari Kurri",1398,25,""],["Luc Robitaille",1394,26,""],["Brett Hull",1391,27,""],["Mike Modano",1374,28,""],["Johnny Bucyk",1369,29,""],["Brendan Shanahan",1354,30,""],["Guy Lafleur",1353,31,""],["Mats Sundin",1349,32,""],["Dave Andreychuk",1338,33,""],["Denis Savard",1338,33,""],["Mike Gartner",1335,35,""],["Pierre Turgeon",1327,36,""],["Gilbert Perreault",1326,37,""],["Anže Kopitar",1316,38,""],["Jarome Iginla",1300,39,""],["Alex Delvecchio",1281,40,""],["Steven Stamkos",1278,41,""],["Al MacInnis",1274,42,""],["Connor McDavid",1273,43,""],["Jean Ratelle",1267,44,""],["Peter Šťastný",1239,45,""],["Phil Housley",1232,46,""],["Norm Ullman",1229,47,""],["Jean Béliveau",1219,48,""],["Larry Murphy",1217,49,""],["Jeremy Roenick",1216,50,""],["Bobby Clarke",1210,51,""],["Bernie Nicholls",1209,52,""],["Vincent Damphousse",1205,53,""],["Dino Ciccarelli",1200,54,""],["Patrick Marleau",1197,55,""],["John Tavares",1192,56,""],["Rod Brind'Amour",1184,57,""],["Sergei Fedorov",1179,58,""],["Claude Giroux",1177,59,""],["Nathan MacKinnon",1172,60,""],["Bobby Hull",1170,61,""],["Daniel Alfredsson",1157,62,""],["Michel Goulet",1153,63,""],["Nikita Kucherov",1152,64,""],["Nicklas Lidström",1142,65,""],["Marián Hossa",1134,66,""],["Bernie Federko",1130,67,""],["Mike Bossy",1126,68,""],["Joe Nieuwendyk",1126,68,""],["Darryl Sittler",1121,70,""],["Frank Mahovlich",1103,71,""],["Glenn Anderson",1099,72,""],["Leon Draisaitl",1094,73,""],["Theo Fleury",1088,74,""],["Henrik Sedin",1070,75,""],["Dave Taylor",1069,76,""],["Joe Pavelski",1068,77,""],["Keith Tkachuk",1065,78,""],["Ray Whitney",1064,79,""],["Joe Mullen",1063,80,""],["Eric Staal",1063,80,""],["Pat Verbeek",1062,82,""],["Denis Potvin",1052,83,""],["Henri Richard",1046,84,""],["Daniel Sedin",1041,85,""],["Patrice Bergeron",1040,86,""],["Bobby Smith",1036,87,""],["Brad Marchand",1035,88,""],["Nicklas Bäckström",1033,89,""],["Martin St. Louis",1033,89,""],["Doug Weight",1033,89,""],["Alexander Mogilny",1032,92,""],["Alex Kovalev",1029,93,""],["Brian Leetch",1028,94,""],["Patrik Eliáš",1025,95,""],["Brian Bellows",1022,96,""],["Rod Gilbert",1021,97,""],["Dale Hunter",1020,98,""],["Ryan Getzlaf",1019,99,""],["Pat LaFontaine",1013,100,""],["Steve Larmer",1012,101,""],["Lanny McDonald",1006,102,""],["Brian Propp",1004,103,""],["Jamie Benn",1000,104,""],["Jason Spezza",995,105,""],["Phil Kessel",992,106,""],["Paul Kariya",989,107,""],["Rick Middleton",988,108,""],["Dave Keon",986,109,""],["Corey Perry",975,110,""],["Andy Bathgate",973,111,""],["Artemi Panarin",973,111,""],["Shane Doan",972,113,""],["Maurice Richard",966,114,""],["Henrik Zetterberg",960,115,""],["Kirk Muller",959,116,""],["David Pastrňák",959,116,""],["Larry Robinson",958,118,""],["Erik Karlsson",955,119,""],["Rick Tocchet",952,120,""],["Brent Burns",951,121,""],["Vincent Lecavalier",949,122,""],["Chris Chelios",948,123,""],["Blake Wheeler",943,124,""],["Jason Arnott",938,125,""]]},{"id":"nhl_pts26","sport":"NHL","q":"in points during the 2025-26 NHL regular season","unit":"PTS","scope":"season","src":"Hockey Reference","url":"https://www.hockey-reference.com/leagues/NHL_2026_skaters.html","maxTarget":79,"rows":[["Connor McDavid",138,1,"EDM"],["Nikita Kucherov",130,2,"TBL"],["Nathan MacKinnon",127,3,"COL"],["Macklin Celebrini",115,4,"SJS"],["Mark Scheifele",103,5,"WPG"],["Nick Suzuki",101,6,"MTL"],["Martin Nečas",100,7,"COL"],["David Pastrňák",100,7,"BOS"],["Leon Draisaitl",97,9,"EDM"],["Jason Robertson",96,10,"DAL"],["Evan Bouchard",95,11,"EDM"],["Kyle Connor",92,12,"WPG"],["Jack Eichel",90,13,"VEG"],["Kirill Kaprizov",89,14,"MIN"],["Cole Caufield",88,15,"MTL"],["Jake Guentzel",88,15,"TBL"],["Clayton Keller",88,15,"UTA"],["Wyatt Johnston",86,18,"DAL"],["Matt Boldy",85,19,"MIN"],["Alex DeBrincat",85,19,"DET"],["Artemi Panarin",84,21,"NYR/2TM"],["Tim Stützle",83,22,"OTT"],["Tage Thompson",81,23,"BUF"],["Zach Werenski",81,23,"CBJ"],["Sebastian Aho",80,25,"CAR"],["Mitch Marner",80,25,"VEG"],["Cale Makar",79,27,"COL"],["William Nylander",79,27,"TOR"],["Lane Hutson",78,29,"MTL"],["Mika Zibanejad",78,29,"NYR"],["Jack Hughes",77,31,"NJD"],["Mikko Rantanen",77,31,"DAL"],["Lucas Raymond",76,33,"DET"],["Quinn Hughes",76,33,"VAN/MIN"],["Connor Bedard",75,35,"CHI"],["Filip Forsberg",75,35,"NSH"],["Sidney Crosby",74,37,"PIT"],["Rasmus Dahlin",74,37,"BUF"],["Brandon Hagel",74,37,"TBL"],["Ryan O'Reilly",74,37,"NSH"],["Nick Schmaltz",74,37,"UTA"],["Dylan Guenther",73,42,"UTA"],["Adrian Kempe",73,42,"LAK"],["Juraj Slafkovsky",73,42,"MTL"],["Mark Stone",73,42,"VEG"],["Mathew Barzal",72,46,"NYI"],["Drake Batherson",71,47,"OTT"],["Jesper Bratt",71,47,"NJD"],["Nikolaj Ehlers",71,47,"CAR"],["John Tavares",71,47,"TOR"],["Darren Raddysh",70,51,"TBL"],["Andrei Svechnikov",70,51,"CAR"],["Cutter Gauthier",69,53,"ANA"],["Gabriel Vilardi",69,53,"WPG"],["Morgan Geekie",68,55,"BOS"],["Travis Konecny",68,55,"PHI"],["Leo Carlsson",67,57,"ANA"],["Dylan Larkin",67,57,"DET"],["Kirill Marchenko",67,57,"CBJ"],["Trevor Zegras",67,57,"PHI"],["Nico Hischier",66,61,"NJD"],["Seth Jarvis",66,61,"CAR"],["Erik Karlsson",66,61,"PIT"],["Matthew Knies",66,61,"TOR"],["Steven Stamkos",66,61,"NSH"],["Alex Tuch",66,61,"BUF"],["Brock Nelson",65,67,"COL"],["Bryan Rust",65,67,"PIT"],["Pavel Zacha",65,67,"BOS"],["Pavel Dorofeyev",64,70,"VEG"],["Anthony Mantha",64,70,"PIT"],["Alex Ovechkin",64,70,"WSH"],["Robert Thomas",64,70,"STL"],["Miro Heiskanen",63,74,"DAL"],["Ivan Demidov",62,75,"MTL"],["Tom Wilson",62,75,"WSH"],["Ivan Barbashev",61,77,"VEG"],["Evgeni Malkin",61,77,"PIT"],["Charlie McAvoy",61,77,"BOS"],["Sam Reinhart",61,77,"FLA"],["Jakob Chychrun",60,81,"WSH"],["Moritz Seider",60,81,"DET"],["Beckett Sennecke",60,81,"ANA"],["John Carlson",60,81,"2TM"],["Dylan Cozens",59,85,"OTT"],["Adam Fantilli",59,85,"CBJ"],["Matthew Schaefer",59,85,"NYI"],["Mikhail Sergachev",59,85,"UTA"],["Will Smith",59,85,"SJS"],["Brady Tkachuk",59,85,"OTT"],["Sam Bennett",58,91,"FLA"],["Tyler Bertuzzi",58,91,"CHI"],["Charlie Coyle",58,91,"CBJ"],["Tomáš Hertl",58,91,"VEG"],["Jackson LaCombe",58,91,"ANA"],["Dylan Strome",58,91,"WSH"],["Bo Horvat",57,97,"NYI"],["Patrick Kane",57,97,"DET"],["Alexis Lafrenière",57,97,"NYR"],["Troy Terry",57,97,"ANA"],["Luke Evangelista",56,101,"NSH"],["Ryan Nugent-Hopkins",56,101,"EDM"],["Jordan Eberle",55,103,"SEA"],["Roman Josi",55,103,"NSH"],["Josh Morrissey",55,103,"WPG"],["Carter Verhaeghe",55,103,"FLA"],["Alexander Wennberg",55,103,"SJS"],["Viktor Arvidsson",54,108,"BOS"],["Brad Marchand",54,108,"FLA"],["Ryan McLeod",54,108,"BUF"],["Jake Sanderson",54,108,"OTT"],["Mats Zuccarello",54,108,"MIN"],["Jackson Blake",53,113,"CAR"],["William Eklund",53,113,"SJS"],["Adam Fox",53,113,"NYR"],["Auston Matthews",53,113,"TOR"],["J.T. Miller",53,113,"NYR"],["Vincent Trocheck",53,113,"NYR"],["Anthony Cirelli",52,119,"TBL"],["Josh Doan",52,119,"BUF"],["Zach Hyman",52,119,"EDM"],["Aliaksei Protas",52,119,"WSH"]]},{"id":"mlb_hr","sport":"MLB","q":"all-time in career home runs","unit":"HR","scope":"career","src":"Baseball Reference","url":"https://www.baseball-reference.com/leaders/HR_career.shtml","maxTarget":89,"rows":[["Barry Bonds",762,1,""],["Hank Aaron",755,2,""],["Babe Ruth",714,3,""],["Albert Pujols",703,4,""],["Alex Rodriguez",696,5,""],["Willie Mays",660,6,""],["Ken Griffey Jr.",630,7,""],["Jim Thome",612,8,""],["Sammy Sosa",609,9,""],["Frank Robinson",586,10,""],["Mark McGwire",583,11,""],["Harmon Killebrew",573,12,""],["Rafael Palmeiro",569,13,""],["Reggie Jackson",563,14,""],["Manny Ramirez",555,15,""],["Mike Schmidt",548,16,""],["David Ortiz",541,17,""],["Mickey Mantle",536,18,""],["Jimmie Foxx",534,19,""],["Willie McCovey",521,20,""],["Frank Thomas",521,20,""],["Ted Williams",521,20,""],["Ernie Banks",512,23,""],["Eddie Mathews",512,23,""],["Miguel Cabrera",511,25,""],["Mel Ott",511,25,""],["Gary Sheffield",509,27,""],["Eddie Murray",504,28,""],["Lou Gehrig",493,29,""],["Fred McGriff",493,29,""],["Adrian Beltré",477,31,""],["Stan Musial",475,32,""],["Willie Stargell",475,32,""],["Carlos Delgado",473,34,""],["Chipper Jones",468,35,""],["Dave Winfield",465,36,""],["Nelson Cruz",464,37,""],["José Canseco",462,38,""],["Adam Dunn",462,38,""],["Giancarlo Stanton",456,40,""],["Carl Yastrzemski",452,41,""],["Jeff Bagwell",449,42,""],["Vladimir Guerrero",449,42,""],["Dave Kingman",442,44,""],["Jason Giambi",440,45,""],["Paul Konerko",439,46,""],["Andre Dawson",438,47,""],["Carlos Beltrán",435,48,""],["Juan González",434,49,""],["Andruw Jones",434,49,""],["Cal Ripken Jr.",431,51,""],["Mike Piazza",427,52,""],["Mike Trout",426,53,""],["Billy Williams",426,53,""],["Edwin Encarnación",424,55,""],["Darrell Evans",414,56,""],["Alfonso Soriano",412,57,""],["Mark Teixeira",409,58,""],["Duke Snider",407,59,""],["Andrés Galarraga",399,60,""],["Al Kaline",399,60,""],["Manny Machado",399,60,""],["Dale Murphy",398,63,""],["Joe Carter",396,64,""],["Jim Edmonds",393,65,""],["Bryce Harper",392,66,""],["Paul Goldschmidt",390,67,""],["Graig Nettles",390,67,""],["Johnny Bench",389,69,""],["Aaron Judge",386,70,""],["Aramis Ramírez",386,70,""],["Dwight Evans",385,72,""],["Kyle Schwarber",385,72,""],["Harold Baines",384,74,""],["Nolan Arenado",383,75,""],["Freddie Freeman",383,75,""],["Larry Walker",383,75,""],["Frank Howard",382,78,""],["Ryan Howard",382,78,""],["Jim Rice",382,78,""],["Albert Belle",381,81,""],["Orlando Cepeda",379,82,""],["Tony Pérez",379,82,""],["Matt Williams",378,84,""],["Norm Cash",377,85,""],["Jeff Kent",377,85,""],["Carlton Fisk",376,87,""],["Rocky Colavito",374,88,""],["Gil Hodges",370,89,""],["Todd Helton",369,90,""],["Ralph Kiner",369,90,""],["Lance Berkman",366,92,""],["Joe DiMaggio",361,93,""],["Gary Gaetti",360,94,""],["Johnny Mize",359,95,""],["Yogi Berra",358,96,""],["Carlos Lee",358,96,""],["Joey Votto",356,98,""],["Greg Vaughn",355,99,""],["Luis Gonzalez",354,100,""],["Lee May",354,100,""],["Torii Hunter",353,102,""],["Ryan Braun",352,103,""],["Ellis Burks",352,103,""],["Dick Allen",351,105,""],["Eugenio Suárez",351,105,""],["Chili Davis",350,107,""],["George Foster",348,108,""],["José Bautista",344,109,""],["Curtis Granderson",344,109,""],["Evan Longoria",342,111,""],["Ron Santo",342,111,""],["Jack Clark",340,113,""],["Tino Martinez",339,114,""],["Dave Parker",339,114,""],["Boog Powell",339,114,""],["Don Baylor",338,117,""],["Joe Adcock",336,118,""],["Robinson Canó",335,119,""],["Carlos Santana",335,119,""],["Darryl Strawberry",335,119,""],["Andrew McCutchen",333,122,""],["Moisés Alou",332,123,""],["Bobby Bonds",332,123,""],["Hank Greenberg",331,125,""],["Derrek Lee",331,125,""],["J.D. Martinez",331,125,""],["Matt Olson",329,128,""],["Shawn Green",328,129,""],["Mo Vaughn",328,129,""]]},{"id":"cbb_pts","sport":"CBB","q":"all-time in men's college basketball career points (Division I, since 1947-48)","unit":"PTS","scope":"career","src":"Sports Reference CBB","url":"https://www.sports-reference.com/cbb/leaders/pts-player-career.html","maxTarget":84,"rows":[["Pete Maravich",3667,1,"LSU"],["Antoine Davis",3664,2,"Detroit Mercy"],["Freeman Williams",3249,3,"Portland State"],["Chris Clemons",3225,4,"Campbell"],["Lionel Simmons",3217,5,"La Salle"],["Alphonso Ford",3165,6,"Mississippi Valley State"],["Doug McDermott",3150,7,"Creighton"],["Max Abmas",3132,8,"Texas"],["Mike Daum",3067,9,"South Dakota State"],["Harry Kelly",3066,10,"Texas Southern"],["Keydren Clark",3058,11,"Saint Peter's"],["Hersey Hawkins",3008,12,"Bradley"],["Oscar Robertson",2973,13,"Cincinnati"],["Danny Manning",2951,14,"Kansas"],["Alfredrick Hughes",2914,15,"Loyola (IL)"],["Elvin Hayes",2884,16,"Houston"],["Tyler Hansbrough",2872,17,"North Carolina"],["Larry Bird",2850,18,"Indiana State"],["Mark Sears",2839,19,"Alabama"],["Otis Birdsong",2832,20,"Houston"],["Kevin Bradshaw",2804,21,"U.S. International"],["Allan Houston",2801,22,"Tennessee"],["Hunter Dickinson",2800,23,"Kansas"],["J.J. Redick",2769,24,"Duke"],["Caleb Love",2762,25,"Arizona"],["Markus Howard",2761,26,"Marquette"],["RJ Davis",2725,27,"North Carolina"],["Hank Gathers",2723,28,"Loyola Marymount"],["Tyler Haws",2720,29,"BYU"],["Reggie Lewis",2708,30,"Northeastern"],["Daren Queenan",2703,31,"Lehigh"],["Johni Broome",2698,32,"Auburn"],["Byron Larkin",2696,33,"Xavier"],["Darius McGhee",2685,34,"Liberty"],["Jermaine Marrow",2680,35,"Hampton"],["Bo McCalebb",2679,36,"New Orleans"],["David Robinson",2669,37,"Navy"],["Wayman Tisdale",2661,38,"Oklahoma"],["Taevion Kinsey",2641,39,"Marshall"],["Jon Elmore",2638,40,"Marshall"],["Stephen Curry",2635,41,"Davidson"],["Troy Bell",2632,42,"Boston College"],["Michael Brooks",2628,43,"La Salle"],["Jahmir Young",2626,44,"Maryland"],["Calbert Cheaney",2613,45,"Indiana"],["Joe Dumars",2612,46,"McNeese"],["Mark Macon",2609,47,"Temple"],["Don MacLean",2608,48,"UCLA"],["Henry Domercant",2602,49,"Eastern Illinois"],["Jimmer Fredette",2599,50,"BYU"],["Terrance Bailey",2591,51,"Wagner"],["Dickie Hemric",2587,52,"Wake Forest"],["Joe Jakubick",2583,53,"Akron"],["Calvin Natt",2581,54,"Louisiana–Monroe"],["Derrick Chievous",2580,55,"Missouri"],["Graham Ike",2575,56,"Gonzaga"],["Skip Henderson",2574,57,"Marshall"],["Andrew Goudelock",2571,58,"College of Charleston"],["Austin Carr",2560,59,"Notre Dame"],["Johnny Dawkins",2556,60,"Duke"],["Reggie Williams",2556,60,"VMI"],["Sean Elliott",2555,62,"Arizona"],["Jhivvan Jackson",2551,63,"UTSA"],["Rodney Monroe",2551,63,"NC State"],["Calvin Murphy",2548,65,"Niagara"],["Keith Van Horn",2542,66,"Utah"],["Frank Selvy",2538,67,"Furman"],["Willie Jackson",2535,68,"Centenary"],["Steve Burtt",2534,69,"Iona"],["Steve Rogers",2534,69,"Alabama State"],["Shawn Respert",2531,71,"Michigan State"],["Andrew Toney",2526,72,"Louisiana"],["Jordan Howard",2524,73,"Central Arkansas"],["Ronnie McCollum",2524,73,"Centenary"],["Ron Perry",2524,73,"Holy Cross"],["Jaycee Carroll",2522,76,"Utah State"],["Tyler Hall",2518,77,"Montana State"],["Mike Olliver",2518,77,"Lamar"],["Zach Edey",2516,79,"Purdue"],["Fletcher Magee",2516,79,"Wofford"],["Bryant Stith",2516,79,"Virginia"],["Charles Jenkins",2513,82,"Hofstra"],["Terry Taylor",2507,83,"Austin Peay"],["Bill Bradley",2503,84,"Princeton"],["Caleb Green",2503,84,"Oral Roberts"],["Jeff Grayer",2502,86,"Iowa State"],["Terry Dehere",2494,87,"Seton Hall"],["Michael Watson",2488,88,"Kansas City"],["Bonzi Wells",2485,89,"Ball State"],["Bimbo Coles",2484,90,"Virginia Tech"],["Jeff Martin",2484,90,"Murray State"],["John Gerdy",2483,92,"Davidson"],["Garrison Mathews",2478,93,"Lipscomb"],["Luke Harangody",2476,94,"Notre Dame"],["Eddie Benton",2474,95,"Vermont"],["Grant Riller",2474,95,"College of Charleston"],["Danny Ainge",2467,97,"BYU"],["Marques Warrick",2465,98,"Missouri"],["D.J. Balentine",2464,99,"Evansville"],["Nick Fazekas",2464,99,"Nevada"],["Tom Gola",2461,101,"La Salle"],["Christian Laettner",2460,102,"Duke"],["Tony Dumas",2459,103,"Kansas City"],["Stefon Jackson",2456,104,"UTEP"],["Souley Boum",2455,105,"Xavier"],["Vernon Maxwell",2450,106,"Florida"],["Ryan Kalkbrenner",2443,107,"Creighton"],["Taylor Coppenrath",2442,108,"Vermont"],["Glen Rice",2442,108,"Michigan"],["Chris Mullin",2440,110,"St. John's"],["Mike McGee",2439,111,"Michigan"],["Steve Alford",2438,112,"Indiana"],["Dallas Moore",2437,113,"North Florida"],["Gibson Jimerson",2428,114,"Saint Louis"],["Charles Jones",2428,114,"LIU"],["Tucker DeVries",2423,116,"Indiana"],["Kevin Foster",2423,116,"Santa Clara"],["Gay Elmore",2422,118,"VMI"],["Carlos Yates",2420,119,"George Mason"],["Keith Lee",2408,120,"Memphis"],["Charles Williams",2404,121,"Howard"],["Malik Sealy",2401,122,"St. John's"],["Phil Sellers",2399,123,"Rutgers"],["Todd Day",2395,124,"Arkansas"],["Jayden Gardner",2395,124,"Virginia"]]},{"id":"cfb_rush1","sport":"CFB","q":"all-time in single-season FBS rushing yards (since 1956)","unit":"YDS","scope":"season-alltime","src":"Sports Reference CFB","url":"https://www.sports-reference.com/cfb/leaders/rush-yds-player-season.html","maxTarget":60,"rows":[["Barry Sanders",2628,1,"1988 Oklahoma State"],["Ashton Jeanty",2601,2,"2024 Boise State"],["Melvin Gordon",2587,3,"2014 Wisconsin"],["Kevin Smith",2567,4,"2007 UCF"],["Marcus Allen",2342,5,"1981 USC"],["Rashaad Penny",2248,6,"2017 San Diego State"],["Derrick Henry",2219,7,"2015 Alabama"],["Jonathan Taylor",2194,8,"2018 Wisconsin"],["Troy Davis",2185,9,"1996 Iowa State"],["Andre Williams",2177,10,"2013 Boston College"],["LaDainian Tomlinson",2158,11,"2000 TCU"],["Mike Rozier",2148,12,"1983 Nebraska"],["Donnel Pumphrey",2133,13,"2016 San Diego State"],["Matt Forte",2127,14,"2007 Tulane"],["Ricky Williams",2124,15,"1998 Texas"],["Bryce Love",2118,16,"2017 Stanford"],["Chuba Hubbard",2094,17,"2019 Oklahoma State"],["Larry Johnson",2087,18,"2002 Penn State"],["Donald Brown",2083,19,"2008 UConn"],["Rashaan Salaam",2055,20,"1994 Colorado"],["Tevin Coleman",2036,21,"2014 Indiana"],["D'Onta Foreman",2028,22,"2016 Texas"],["Christian McCaffrey",2019,23,"2015 Stanford"],["J.J. Arrington",2018,24,"2004 California"],["Malcolm Perry",2017,25,"2019 Navy"],["Ray Rice",2012,26,"2007 Rutgers"],["Troy Davis",2010,27,"1995 Iowa State"],["J.K. Dobbins",2003,28,"2019 Ohio State"],["Jonathan Taylor",2003,28,"2019 Wisconsin"],["Byron Hanspard",2000,30,"1996 Texas Tech"],["Darren Sproles",1986,31,"2003 Kansas State"],["Jonathan Taylor",1977,32,"2017 Wisconsin"],["LeShon Johnson",1976,33,"1993 Northern Illinois"],["DeAngelo Williams",1964,34,"2005 Memphis"],["Leonard Fournette",1953,35,"2015 LSU"],["DeAngelo Williams",1948,36,"2004 Memphis"],["Tony Dorsett",1948,36,"1976 Pitt"],["Ka'Deem Carey",1929,38,"2012 Arizona"],["Garrett Wolfe",1928,39,"2006 Northern Illinois"],["Adrian Peterson",1925,40,"2004 Oklahoma"],["Montee Ball",1923,41,"2011 Wisconsin"],["Devin Singletary",1920,42,"2017 Florida Atlantic"],["Jordan Lynch",1920,42,"2013 Northern Illinois"],["Michael Turner",1915,44,"2002 Northern Illinois"],["Damien Anderson",1914,45,"2000 Northwestern"],["Darrell Henderson",1909,46,"2018 Memphis"],["Lorenzo White",1908,47,"1985 Michigan State"],["Wasean Tait",1905,48,"1995 Toledo"],["Jerome Harrison",1900,49,"2005 Washington State"],["Ricky Williams",1893,50,"1997 Texas"],["Herschel Walker",1891,51,"1981 Georgia"],["Brian Pruitt",1890,52,"1994 Central Michigan"],["Ka'Deem Carey",1885,53,"2013 Arizona"],["Quentin Griffin",1884,54,"2002 Oklahoma"],["Stefphon Jefferson",1883,55,"2012 Nevada"],["Ed Marinaro",1881,56,"1971 Cornell"],["Ezekiel Elliott",1878,57,"2014 Ohio State"],["Ahman Green",1877,58,"1997 Nebraska"],["Ernest Anderson",1877,58,"1982 Oklahoma State"],["Ricky Bell",1875,60,"1975 USC"],["Toby Gerhart",1871,61,"2009 Stanford"],["Bishop Sankey",1870,62,"2013 Washington"],["Donnel Pumphrey",1867,63,"2014 San Diego State"],["Paul Palmer",1866,64,"1986 Temple"],["Ron Dayne",1863,65,"1996 Wisconsin"],["Brian Hill",1860,66,"2016 Wyoming"],["Shonn Greene",1850,67,"2008 Iowa"],["LaDainian Tomlinson",1850,67,"1999 TCU"],["Lew Nichols",1848,69,"2021 Central Michigan"],["George Jones",1842,70,"1995 San Diego State"],["Chris Brown",1841,71,"2002 Colorado"],["Royce Freeman",1836,72,"2015 Oregon"],["Cedric Benson",1834,73,"2004 Texas"],["Ron Dayne",1834,73,"1999 Wisconsin"],["Montee Ball",1830,75,"2012 Wisconsin"],["Darren McFadden",1830,75,"2007 Arkansas"],["Eddie George",1826,77,"1995 Ohio State"],["Jay Ajayi",1823,78,"2014 Boise State"],["Ezekiel Elliott",1821,79,"2015 Ohio State"],["Tre Mason",1816,80,"2013 Auburn"],["Jordan Lynch",1815,81,"2012 Northern Illinois"],["Ryan Mathews",1808,82,"2009 Fresno State"],["LaMichael James",1805,83,"2011 Oregon"],["Charles White",1803,84,"1979 USC"],["Jamario Thomas",1801,85,"2004 North Texas"],["Jaret Patterson",1799,86,"2019 Buffalo"],["Dion Lewis",1799,86,"2009 Pitt"],["Thomas Jones",1798,88,"1999 Virginia"],["Ray Rice",1794,89,"2006 Rutgers"],["Le'Veon Bell",1793,90,"2012 Michigan State"],["Anthony Thompson",1793,90,"1989 Indiana"],["Obie Graves",1789,92,"1978 Cal State Fullerton"],["Travis Prentice",1787,93,"1998 Miami (OH)"],["Bo Jackson",1786,94,"1985 Auburn"],["George Rogers",1781,95,"1980 South Carolina"],["Ryan Moats",1774,96,"2004 Louisiana Tech"],["Aaron Jones",1773,97,"2016 UTEP"],["Devon Johnson",1767,98,"2014 Marshall"],["Kenjon Barner",1767,98,"2012 Oregon"],["Dalvin Cook",1765,100,"2016 Florida State"],["James Conner",1765,100,"2014 Pitt"]]},{"id":"nfl_rec25","sport":"NFL","q":"in receiving yards during the 2025 NFL regular season","unit":"YDS","scope":"season","src":"drafthistory.com","url":"https://www.drafthistory.com/index.php/2025stats/receiving","maxTarget":84,"rows":[["Jaxon Smith-Njigba",1793,1,"Seahawks"],["Puka Nacua",1715,2,"Rams"],["George Pickens",1429,3,"Cowboys"],["Ja'Marr Chase",1412,4,"Bengals"],["Amon-Ra St. Brown",1401,5,"Lions"],["Trey McBride",1239,6,"Cardinals"],["Zay Flowers",1211,7,"Ravens"],["Chris Olave",1163,8,"Saints"],["Jameson Williams",1117,9,"Lions"],["Nico Collins",1117,9,"Texans"],["CeeDee Lamb",1077,11,"Cowboys"],["Justin Jefferson",1048,12,"Vikings"],["Courtland Sutton",1017,13,"Broncos"],["Tetairoa McMillan",1014,14,"Panthers"],["Wan'Dale Robinson",1014,14,"Giants"],["Stefon Diggs",1013,16,"Patriots"],["DeVonta Smith",1008,17,"Eagles"],["Michael Wilson",1006,18,"Cardinals"],["A.J. Brown",1003,19,"Eagles"],["Alec Pierce",1003,19,"Colts"],["Emeka Egbuka",938,21,"Buccaneers"],["Kyle Pitts",928,22,"Falcons"],["Christian McCaffrey",924,23,"49ers"],["Drake London",919,24,"Falcons"],["Jaylen Waddle",910,25,"Dolphins"],["Juwan Johnson",889,26,"Saints"],["Travis Kelce",851,27,"Chiefs"],["DK Metcalf",850,28,"Steelers"],["Parker Washington",847,29,"Jaguars"],["Tee Higgins",846,30,"Bengals"],["Jakobi Meyers",835,31,"Raiders/Jaguars"],["Bijan Robinson",820,32,"Falcons"],["Tyler Warren",817,33,"Colts"],["Davante Adams",789,34,"Rams"],["Ladd McConkey",789,34,"Chargers"],["Michael Pittman Jr.",784,36,"Colts"],["Dalton Schultz",777,37,"Texans"],["Keenan Allen",777,37,"Chargers"],["Hunter Henry",768,39,"Patriots"],["Quentin Johnston",735,40,"Chargers"],["Harold Fannin Jr.",731,41,"Browns"],["Deebo Samuel",727,42,"Commanders"],["Romeo Doubs",724,43,"Packers"],["Khalil Shakir",719,44,"Bills"],["Colston Loveland",713,45,"Bears"],["Troy Franklin",709,46,"Broncos"],["Brian Thomas Jr.",707,47,"Jaguars"],["Tre Tucker",696,48,"Raiders"],["Rashid Shaheed",687,49,"Saints/Seahawks"],["DJ Moore",682,50,"Bears"],["Brock Bowers",680,51,"Raiders"],["Oronde Gadsden II",664,52,"Chargers"],["Rome Odunze",661,53,"Bears"],["Luther Burden III",652,54,"Bears"],["Jauan Jennings",643,55,"49ers"],["George Kittle",628,56,"49ers"],["Jahmyr Gibbs",616,57,"Lions"],["Christian Watson",611,58,"Packers"],["Jordan Addison",610,59,"Vikings"],["Marvin Harrison Jr.",608,60,"Cardinals"],["Jerry Jeudy",602,61,"Browns"],["Jake Ferguson",600,62,"Cowboys"],["Cooper Kupp",593,63,"Seahawks"],["Dallas Goedert",591,64,"Eagles"],["Marquise Brown",587,65,"Chiefs"],["Terry McLaurin",582,66,"Commanders"],["Cade Otton",572,67,"Buccaneers"],["Dalton Kincaid",571,68,"Bills"],["Rashee Rice",571,68,"Chiefs"],["Josh Downs",566,70,"Colts"],["Chig Okonkwo",560,71,"Titans"],["Kayshon Boutte",551,72,"Patriots"],["Kendrick Bourne",551,72,"49ers"],["Mack Hollins",550,74,"Patriots"],["Brenton Strange",540,75,"Jaguars"],["Darius Slayton",538,76,"Giants"],["Xavier Worthy",532,77,"Chiefs"],["Ricky Pearsall",528,78,"49ers"],["Theo Johnson",528,78,"Giants"],["Jayden Higgins",525,80,"Texans"],["AJ Barner",519,81,"Seahawks"],["Elic Ayomanor",515,82,"Titans"],["Zach Ertz",504,83,"Commanders"],["Sam LaPorta",489,84,"Lions"],["Tucker Kraft",489,84,"Packers"],["De'Von Achane",488,86,"Dolphins"],["Kenneth Gainwell",486,87,"Steelers"],["Pat Freiermuth",486,87,"Steelers"],["Ryan Flournoy",475,89,"Cowboys"],["Evan Engram",461,90,"Broncos"],["Adonai Mitchell",453,91,"Colts/Jets"],["Demario Douglas",447,92,"Patriots"],["Jalen Nailor",444,93,"Vikings"],["Darnell Mooney",443,94,"Falcons"],["T.J. Hockenson",438,95,"Vikings"],["Tyquan Thornton",438,95,"Chiefs"],["Chase Brown",437,97,"Bengals"],["Andrei Iosivas",435,98,"Bengals"],["Xavier Hutchinson",428,99,"Texans"],["Chimere Dike",423,100,"Titans"],["Mark Andrews",422,101,"Ravens"],["Dawson Knox",417,102,"Bills"],["Colby Parkinson",408,103,"Rams"],["Keon Coleman",404,104,"Bills"],["KaVontae Turpin",396,105,"Cowboys"],["Garrett Wilson",395,106,"Jets"],["Jalen Coker",394,107,"Panthers"],["Jonathan Taylor",378,108,"Colts"],["Pat Bryant",378,108,"Broncos"],["Calvin Austin III",372,110,"Steelers"],["Sterling Shepard",371,111,"Buccaneers"],["Mason Taylor",369,112,"Jets"],["Mike Evans",368,113,"Buccaneers"],["Darnell Washington",364,114,"Steelers"],["Xavier Legette",363,115,"Panthers"],["Matthew Golden",361,116,"Packers"],["Chris Godwin",360,117,"Buccaneers"],["Gunnar Helm",357,118,"Titans"],["RJ Harvey",356,119,"Broncos"],["Breece Hall",350,120,"Jets"],["Van Jefferson",350,120,"Titans"],["Cole Kmet",347,122,"Bears"],["Ashton Jeanty",346,123,"Raiders"],["JuJu Smith-Schuster",345,124,"Chiefs"],["Rhamondre Stevenson",345,124,"Patriots"]]},{"id":"nfl_rec24","sport":"NFL","q":"in receiving yards during the 2024 NFL regular season","unit":"YDS","scope":"season","src":"drafthistory.com","url":"https://www.drafthistory.com/index.php/2024stats/receiving","maxTarget":81,"rows":[["Ja'Marr Chase",1708,1,"Bengals"],["Justin Jefferson",1533,2,"Vikings"],["Brian Thomas Jr.",1282,3,"Jaguars"],["Drake London",1271,4,"Falcons"],["Amon-Ra St. Brown",1263,5,"Lions"],["Jerry Jeudy",1229,6,"Browns"],["Malik Nabers",1204,7,"Giants"],["Brock Bowers",1194,8,"Raiders"],["CeeDee Lamb",1194,8,"Cowboys"],["Ladd McConkey",1149,10,"Chargers"],["Trey McBride",1146,11,"Cardinals"],["Jaxon Smith-Njigba",1130,12,"Seahawks"],["George Kittle",1106,13,"49ers"],["Garrett Wilson",1104,14,"Jets"],["Terry McLaurin",1096,15,"Commanders"],["Courtland Sutton",1081,16,"Broncos"],["A.J. Brown",1079,17,"Eagles"],["Davante Adams",1063,18,"Raiders/Jets"],["Zay Flowers",1059,19,"Ravens"],["Jakobi Meyers",1027,20,"Raiders"],["Calvin Ridley",1017,21,"Titans"],["Nico Collins",1006,22,"Texans"],["Mike Evans",1004,23,"Buccaneers"],["Jameson Williams",1001,24,"Lions"],["Darnell Mooney",998,25,"Falcons"],["DK Metcalf",992,26,"Seahawks"],["Puka Nacua",990,27,"Rams"],["Jauan Jennings",975,28,"49ers"],["DJ Moore",966,29,"Bears"],["Tyreek Hill",959,30,"Dolphins"],["Tee Higgins",911,31,"Bengals"],["George Pickens",900,32,"Steelers"],["Marvin Harrison Jr.",885,33,"Cardinals"],["Jonnu Smith",884,34,"Dolphins"],["Jordan Addison",875,35,"Vikings"],["Jayden Reed",857,36,"Packers"],["DeVonta Smith",833,37,"Eagles"],["Alec Pierce",824,38,"Colts"],["Travis Kelce",823,39,"Chiefs"],["Khalil Shakir",821,40,"Bills"],["Michael Pittman Jr.",808,41,"Colts"],["Josh Downs",803,42,"Colts"],["Rashod Bateman",756,43,"Ravens"],["Jaylen Waddle",744,44,"Dolphins"],["Keenan Allen",744,44,"Bears"],["Rome Odunze",734,46,"Bears"],["Sam LaPorta",726,47,"Lions"],["Quentin Johnston",711,48,"Chargers"],["Cooper Kupp",710,49,"Rams"],["Tucker Kraft",707,50,"Packers"],["Wan'Dale Robinson",699,51,"Giants"],["Ray-Ray McCloud",686,52,"Falcons"],["Hunter Henry",674,53,"Patriots"],["Mark Andrews",673,54,"Ravens"],["Deebo Samuel",670,55,"49ers"],["Tank Dell",667,56,"Texans"],["Mike Gesicki",665,57,"Bengals"],["Zach Ertz",654,58,"Commanders"],["Pat Freiermuth",653,59,"Steelers"],["Xavier Worthy",638,60,"Chiefs"],["Demario Douglas",621,61,"Patriots"],["Christian Watson",620,62,"Packers"],["Adam Thielen",615,63,"Panthers"],["DeAndre Hopkins",610,64,"Titans/Chiefs"],["Jalen Tolbert",610,64,"Cowboys"],["Kyle Pitts",602,66,"Falcons"],["Romeo Doubs",601,67,"Packers"],["Cade Otton",600,68,"Buccaneers"],["Tyler Lockett",600,68,"Seahawks"],["De'Von Achane",592,70,"Dolphins"],["Kayshon Boutte",589,71,"Patriots"],["Joshua Palmer",584,72,"Chargers"],["Chris Godwin",576,73,"Buccaneers"],["Darius Slayton",573,74,"Giants"],["Tutu Atwell",562,75,"Rams"],["Keon Coleman",556,76,"Bills"],["Calvin Austin III",548,77,"Steelers"],["Juwan Johnson",548,77,"Saints"],["Michael Wilson",548,77,"Cardinals"],["Amari Cooper",547,80,"Browns/Bills"],["Alvin Kamara",543,81,"Saints"],["Tre Tucker",539,82,"Raiders"],["Elijah Moore",538,83,"Browns"],["Dalton Schultz",532,84,"Texans"],["Allen Lazard",530,85,"Jets"],["Jahmyr Gibbs",517,86,"Lions"],["Olamide Zaccheaus",506,87,"Commanders"],["David Njoku",505,88,"Browns"],["Demarcus Robinson",505,88,"Rams"],["Marvin Mims Jr.",503,90,"Broncos"],["Noah Fant",500,91,"Seahawks"],["Nick Westbrook-Ikhine",497,92,"Titans"],["Xavier Legette",497,92,"Panthers"],["Dallas Goedert",496,94,"Eagles"],["Stefon Diggs",496,94,"Texans"],["Jake Ferguson",494,96,"Cowboys"],["Breece Hall",483,97,"Jets"],["Will Dissly",481,98,"Chargers"],["Andrei Iosivas",479,99,"Bengals"],["Chig Okonkwo",479,99,"Titans"],["Jalen Coker",478,101,"Panthers"],["Isaiah Likely",477,102,"Ravens"],["Austin Hooper",476,103,"Patriots"],["Devaughn Vele",475,104,"Broncos"],["Cole Kmet",474,105,"Bears"],["Jalen McMillan",461,106,"Buccaneers"],["T.J. Hockenson",455,107,"Vikings"],["Noah Brown",453,108,"Commanders"],["Tyler Conklin",449,109,"Jets"],["Dalton Kincaid",448,110,"Bills"],["Noah Gray",437,111,"Chiefs"],["Bijan Robinson",425,112,"Falcons"],["KaVontae Turpin",420,113,"Cowboys"],["Dontayvion Wicks",415,114,"Packers"],["Jalen Nailor",414,115,"Vikings"],["James Conner",414,115,"Cardinals"],["Foster Moreau",413,117,"Saints"],["Brenton Strange",411,118,"Jaguars"],["Marquez Valdes-Scantling",411,118,"Bills/Saints"],["Aaron Jones",408,120,"Vikings"],["Chris Olave",400,121,"Saints"],["Ricky Pearsall",400,121,"49ers"]]},{"id":"nfl_rush25","sport":"NFL","q":"in rushing yards during the 2025 NFL regular season","unit":"YDS","scope":"season","src":"drafthistory.com","url":"https://www.drafthistory.com/index.php/2025stats/rushing","maxTarget":72,"rows":[["James Cook",1621,1,"Bills"],["Derrick Henry",1595,2,"Ravens"],["Jonathan Taylor",1585,3,"Colts"],["Bijan Robinson",1478,4,"Falcons"],["De'Von Achane",1350,5,"Dolphins"],["Kyren Williams",1252,6,"Rams"],["Jahmyr Gibbs",1223,7,"Lions"],["Christian McCaffrey",1202,8,"49ers"],["Javonte Williams",1201,9,"Cowboys"],["Saquon Barkley",1140,10,"Eagles"],["Travis Etienne",1107,11,"Jaguars"],["D'Andre Swift",1087,12,"Bears"],["Tony Pollard",1082,13,"Titans"],["Rico Dowdle",1076,14,"Panthers"],["Breece Hall",1065,15,"Jets"],["Kenneth Walker III",1027,16,"Seahawks"],["Chase Brown",1019,17,"Bengals"],["Ashton Jeanty",975,18,"Raiders"],["Jaylen Warren",958,19,"Steelers"],["Josh Jacobs",929,20,"Packers"],["TreVeyon Henderson",911,21,"Patriots"],["Quinshon Judkins",827,22,"Browns"],["Jacory Croskey-Merritt",805,23,"Commanders"],["Kyle Monangai",783,24,"Bears"],["J.K. Dobbins",772,25,"Broncos"],["Jordan Mason",758,26,"Vikings"],["Blake Corum",746,27,"Rams"],["Tyrone Tracy Jr.",740,28,"Giants"],["Zach Charbonnet",730,29,"Seahawks"],["David Montgomery",716,30,"Lions"],["Woody Marks",703,31,"Texans"],["Kimani Vidal",643,32,"Chargers"],["Kareem Hunt",611,33,"Chiefs"],["Rhamondre Stevenson",603,34,"Patriots"],["Bucky Irving",588,35,"Buccaneers"],["Josh Allen",579,36,"Bills"],["Rachaad White",572,37,"Buccaneers"],["Aaron Jones",548,38,"Vikings"],["Omarion Hampton",545,39,"Chargers"],["RJ Harvey",540,40,"Broncos"],["Kenneth Gainwell",537,41,"Steelers"],["Tyler Allgeier",514,42,"Falcons"],["Chuba Hubbard",511,43,"Panthers"],["Nick Chubb",506,44,"Texans"],["Chris Rodriguez Jr.",500,45,"Commanders"],["Justin Herbert",498,46,"Chargers"],["Emanuel Wilson",496,47,"Packers"],["Jaxson Dart",487,48,"Giants"],["Alvin Kamara",471,49,"Saints"],["Isiah Pacheco",462,50,"Chiefs"],["Drake Maye",450,51,"Patriots"],["Devin Singletary",437,52,"Giants"],["Patrick Mahomes",422,53,"Chiefs"],["Jalen Hurts",421,54,"Eagles"],["Cam Skattebo",410,55,"Giants"],["Brian Robinson Jr.",400,56,"49ers"],["Caleb Williams",383,57,"Bears"],["Justin Fields",383,57,"Jets"],["Baker Mayfield",382,59,"Buccaneers"],["Samaje Perine",382,59,"Bengals"],["Trevor Lawrence",359,61,"Jaguars"],["Bo Nix",356,62,"Broncos"],["Tank Bigsby",356,62,"Jaguars/Eagles"],["Lamar Jackson",349,64,"Ravens"],["Keaton Mitchell",341,65,"Ravens"],["Michael Carter",333,66,"Cardinals"],["Sean Tucker",320,67,"Buccaneers"],["Emari Demercado",312,68,"Cardinals"],["Bhayshul Tuten",307,69,"Jaguars"],["Marcus Mariota",297,70,"Commanders"],["Jaylen Wright",288,71,"Dolphins"],["Tyjae Spears",283,72,"Titans"],["Jayden Daniels",278,73,"Commanders"],["Ray Davis",275,74,"Bills"],["Zonovan Knight",269,75,"Cardinals"],["Malik Davis",250,76,"Cowboys"],["Isaiah Davis",236,77,"Jets"],["Jeremy McNichols",221,78,"Commanders"],["Bryce Young",216,79,"Panthers"],["C.J. Stroud",209,80,"Texans"],["Devin Neal",206,81,"Saints"],["Ty Johnson",200,82,"Bills"],["Jordan Love",199,83,"Packers"],["Ollie Gordon II",199,83,"Dolphins"],["Audric Estime",198,85,"Saints"],["Jawhar Jordan",193,86,"Texans"],["Kendre Miller",193,86,"Saints"],["Jaleel McLaughlin",187,88,"Broncos"],["Tyler Shough",186,89,"Saints"],["J.J. McCarthy",181,90,"Vikings"],["Dak Prescott",177,91,"Cowboys"],["Dylan Sampson",175,92,"Browns"],["Kyler Murray",173,93,"Cardinals"],["Shedeur Sanders",169,94,"Browns"],["Jacoby Brissett",168,95,"Cardinals"],["Spencer Rattler",167,96,"Saints"],["Daniel Jones",164,97,"Colts"],["Trey Benson",160,98,"Cardinals"],["Cam Ward",159,99,"Titans"],["Jaret Patterson",159,99,"Chargers"],["Brashard Smith",151,101,"Chiefs"],["Tyler Huntley",151,101,"Ravens"],["Brock Purdy",147,103,"49ers"],["Tyrod Taylor",143,104,"Jets"],["Jaydon Blue",129,105,"Cowboys"],["Malachi Corley",127,106,"Browns"],["Malik Willis",123,107,"Packers"],["Miles Sanders",117,108,"Cowboys"],["Taysom Hill",114,109,"Saints"],["Zavier Scott",114,109,"Vikings"],["Malik Washington",110,111,"Dolphins"],["Geno Smith",109,112,"Raiders"]]},{"id":"nfl_rec_car","sport":"NFL","q":"all-time in career receiving yards (NFL regular season)","unit":"YDS","scope":"career","src":"Wikipedia (through Week 10, 2026)","url":"https://en.wikipedia.org/wiki/List_of_NFL_career_receiving_yards_leaders","maxTarget":17,"rows":[["Jerry Rice",22895,1,""],["Larry Fitzgerald",17492,2,""],["Terrell Owens",15934,3,""],["Randy Moss",15292,4,""],["Isaac Bruce",15208,5,""],["Tony Gonzalez",15127,6,""],["Tim Brown",14934,7,""],["Steve Smith Sr.",14731,8,""],["Marvin Harrison",14580,9,""],["Reggie Wayne",14345,10,""],["Andre Johnson",14185,11,""],["James Lofton",14004,12,""],["Cris Carter",13899,13,""],["Anquan Boldin",13779,14,""],["Henry Ellard",13777,15,""],["Julio Jones",13703,16,""],["Travis Kelce",13484,17,""],["Mike Evans",13472,18,""],["Torry Holt",13382,19,""],["DeAndre Hopkins",13295,20,""],["Andre Reed",13198,21,""],["Davante Adams",13113,22,""],["Steve Largent",13089,23,""],["Jason Witten",13046,24,""],["Irving Fryar",12785,25,""],["Art Monk",12721,26,""],["Keenan Allen",12402,27,""],["Brandon Marshall",12351,28,""],["Antonio Brown",12291,29,""],["Jimmy Smith",12287,30,""],["Charlie Joiner",12146,31,""],["Hines Ward",12083,32,""],["Derrick Mason",12061,33,""],["Michael Irvin",11904,34,""],["Stefon Diggs",11890,35,""],["Antonio Gates",11841,36,""],["Don Maynard",11834,37,""],["Calvin Johnson",11619,38,""],["Muhsin Muhammad",11438,39,""],["Rod Smith",11389,40,""],["Keenan McCardell",11373,41,""],["Tyreek Hill",11363,42,""],["DeSean Jackson",11263,43,""],["Chad Johnson",11059,44,""],["Joey Galloway",10950,45,""],["Roddy White",10863,46,""],["Gary Clark",10856,47,""],["Stanley Morgan",10716,48,""],["Keyshawn Johnson",10571,49,""],["A.J. Green",10514,50,""],["Harold Jackson",10372,51,""],["Santana Moss",10283,52,""],["Lance Alworth",10266,53,""],["Andre Rison",10205,54,""],["Donald Driver",10137,55,""],["Shannon Sharpe",10060,56,""],["Amari Cooper",10033,57,""]]},{"id":"nfl_rush_car","sport":"NFL","q":"all-time in career rushing yards (NFL regular season)","unit":"YDS","scope":"career","src":"footballdb","url":"https://www.footballdb.com/leaders/career-rushing-yards","maxTarget":10,"rows":[["Emmitt Smith",18355,1,"1990-04"],["Walter Payton",16726,2,"1975-87"],["Frank Gore",16000,3,"2005-22"],["Barry Sanders",15269,4,"1989-98"],["Adrian Peterson",14918,5,"2007-21"],["Curtis Martin",14101,6,"1995-07"],["LaDainian Tomlinson",13684,7,"2001-11"],["Jerome Bettis",13662,8,"1993-06"],["Eric Dickerson",13259,9,"1983-93"],["Derrick Henry",13018,10,"2016-"],["Tony Dorsett",12739,11,"1977-88"],["Jim Brown",12312,12,"1957-65"],["Marshall Faulk",12279,13,"1994-06"],["Edgerrin James",12246,14,"1999-09"],["Marcus Allen",12243,15,"1982-97"],["Franco Harris",12120,16,"1972-84"],["Thurman Thomas",12074,17,"1988-00"],["Fred Taylor",11695,18,"1998-10"],["Steven Jackson",11435,19,"2004-15"],["John Riggins",11352,20,"1971-85"],["Corey Dillon",11241,21,"1997-06"],["O.J. Simpson",11236,22,"1969-79"],["LeSean McCoy",11102,23,"2009-20"],["Warrick Dunn",10967,24,"1997-08"],["Ricky Watters",10643,25,"1992-01"],["Jamal Lewis",10607,26,"2000-10"],["Thomas Jones",10591,27,"2000-11"],["Tiki Barber",10449,28,"1997-06"],["Eddie George",10441,29,"1996-04"],["Marshawn Lynch",10413,30,"2007-19"],["Ottis Anderson",10273,31,"1979-92"],["Ricky Williams",10009,32,"1999-11"],["Clinton Portis",9923,33,"2002-10"],["Matt Forte",9796,34,"2008-18"],["Chris Johnson",9651,35,"2008-17"],["Shaun Alexander",9453,36,"2000-08"],["Earl Campbell",9407,37,"1978-85"],["Ahman Green",9205,38,"1998-09"],["Ezekiel Elliott",9130,39,"2016-24"],["Terry Allen",8614,40,"1991-02"],["Jim Taylor",8597,41,"1958-67"],["Willis McGahee",8474,42,"2003-13"],["Joe Perry",8378,43,"1950-63"],["Saquon Barkley",8356,44,"2018-"],["Earnest Byner",8261,45,"1984-97"],["Herschel Walker",8225,46,"1986-97"],["Roger Craig",8189,47,"1983-93"],["Gerald Riggs",8188,48,"1982-91"],["Priest Holmes",8172,49,"1997-07"],["Maurice Jones-Drew",8167,50,"2006-14"]]}];
+</script>
+<script>
+(() => {
+"use strict";
+// ---------- config ----------
+const EPOCH = "2026-11-17";      // Course #1
+const HOLES = 9;
+const TARGET_COOLDOWN_DAYS = 21; // same player can't be a target again within this window
+const TZ = "America/New_York";
+const ALL_SPORTS = ["NFL","CFB","NBA","CBB","NHL","MLB"];
+// distance off -> score vs par
+const BANDS = [
+  {max:0,   s:-3, t:"HOLE IN ONE!",  c:"hio",   cls:"sc-hio", e:"⛳"},
+  {max:5,   s:-2, t:"Eagle",         c:"ok",    cls:"sc-ok",  e:"🦅"},
+  {max:10,  s:-1, t:"Birdie",        c:"ok",    cls:"sc-ok",  e:"🐦"},
+  {max:20,  s:0,  t:"Par",           c:"par",   cls:"sc-par", e:"🟩"},
+  {max:30,  s:1,  t:"Bogey",         c:"meh",   cls:"sc-meh", e:"🟨"},
+  {max:40,  s:2,  t:"Double Bogey",  c:"meh",   cls:"sc-meh", e:"🟧"},
+  {max:1e9, s:3,  t:"Triple Bogey",  c:"bad",   cls:"sc-bad", e:"🟥"},
+];
+const WATER = {s:3, t:"SPLASH!", c:"water", cls:"sc-water", e:"💧"};
+const QUIPS = {
+  hio:["Pin seeker! Straight into the cup.","Drained it. Drinks are on you in the clubhouse.","Ace! Frame that scorecard."],
+  "Eagle":["Stuck it close. Tap-in eagle.","Flag hunting. Beautiful swing.","That's a tour-level approach."],
+  "Birdie":["On the dance floor. Nice putt.","Rolled it in from the fringe.","Birdie! The gallery approves."],
+  "Par":["Fairway, green, two putts. Respectable.","Steady as she goes.","Nobody ever lost a tournament with a par."],
+  "Bogey":["Caught the greenside bunker.","Chunked the chip. It happens.","Three-putt city."],
+  "Double Bogey":["Into the rough and back out again.","Shanked it. Fore!","Grab a provisional next time."],
+  "Triple Bogey":["Deep in the trees.","Lost ball. Re-tee.","That one's in the parking lot."],
+  water:["Plop. That name isn't on this leaderboard.","Fished it out of the pond. Take your penalty.","Water hazard. Nobody by that name made this list."],
+};
+
+// ---------- helpers ----------
+const $ = id => document.getElementById(id);
+const fmtDate = d => new Intl.DateTimeFormat("en-CA",{timeZone:TZ,year:"numeric",month:"2-digit",day:"2-digit"}).format(d);
+const TODAY = fmtDate(new Date());
+const dayNum = s => Math.round(Date.UTC(+s.slice(0,4), +s.slice(5,7)-1, +s.slice(8,10)) / 864e5);
+const DAY = Math.max(0, dayNum(TODAY) - dayNum(EPOCH));
+const ord = n => { const s=["th","st","nd","rd"], v=n%100; return n+(s[(v-20)%10]||s[v]||s[0]); };
+const fmtNum = v => typeof v==="number" ? v.toLocaleString("en-US") : v;
+const toPar = n => n===0 ? "E" : (n>0?"+":"")+n;
+function mulberry32(a){return function(){a|=0;a=a+0x6D2B79F5|0;let t=Math.imul(a^a>>>15,1|a);t=t+Math.imul(t^t>>>7,61|t)^t;return((t^t>>>14)>>>0)/4294967296;}}
+function hashStr(s){let h=2166136261;for(const c of s){h^=c.charCodeAt(0);h=Math.imul(h,16777619);}return h>>>0;}
+const store = {
+  get(k){try{return JSON.parse(localStorage.getItem(k));}catch(e){return null;}},
+  set(k,v){try{localStorage.setItem(k,JSON.stringify(v));}catch(e){}}
+};
+function toast(msg){const t=$("toast");t.textContent=msg;t.classList.add("on");clearTimeout(toast._t);toast._t=setTimeout(()=>t.classList.remove("on"),2200);}
+const mixKey = sports => ALL_SPORTS.filter(s => sports.includes(s)).join("-");
+const mixLabel = key => key === ALL_SPORTS.join("-") ? "All sports" : key.split("-").join(" + ");
+
+// ---------- course themes (one per day) ----------
+const THEMES = [
+  {id:"parkland", names:["Augusta Pines","Oak Hollow","Willow Creek","Magnolia Ridge"], suffix:"Country Club",
+   rough:"#256b39", speck:"#2d7a42", fw1:"#2f7d44", fw2:"#348a4b", edge:"#1f5c33", green1:"#8bd97c", green2:"#57ad52", sand:"#ecd9a0", sandE:"#cdb46f", tree:"oak", treeC:["#1b5a31","#2b7a46"], label:"#cfe8d2"},
+  {id:"links", names:["Saltmarsh","Gorse Head","Dunmore","Kittiwake Bay"], suffix:"Links",
+   rough:"#9a9a5a", speck:"#b3ad6c", fw1:"#7ea353", fw2:"#87ad5a", edge:"#6f8a46", green1:"#a6d97f", green2:"#76b65a", sand:"#e8d69c", sandE:"#b89f5c", tree:"gorse", treeC:["#5b6b2f","#c9b22e"], label:"#f4f0d0"},
+  {id:"desert", names:["Saguaro Canyon","Red Mesa","Coyote Wash","Sun Devil"], suffix:"Desert Club",
+   rough:"#d9b884", speck:"#c9a46c", fw1:"#4f9a4c", fw2:"#58a654", edge:"#c49a5f", green1:"#8edc7f", green2:"#5bb156", sand:"#f1e1b5", sandE:"#caa86a", tree:"cactus", treeC:["#3f7d3d","#5a9b52"], label:"#5b3d1a"},
+  {id:"autumn", names:["Maple Run","Harvest Hills","Copper Leaf","Birchwood"], suffix:"Golf Club",
+   rough:"#3f6b2f", speck:"#4d7a36", fw1:"#5c8f3f", fw2:"#659a46", edge:"#3a5f29", green1:"#9ad47a", green2:"#66b04e", sand:"#ecd9a0", sandE:"#cdb46f", tree:"oak", treeC:["#c2541f","#e8913a"], label:"#f6e6c8"},
+  {id:"tropical", names:["Coral Cove","Palmetto Bay","Kapalua Point","Mango Key"], suffix:"Resort Course",
+   rough:"#2f8a4e", speck:"#37975a", fw1:"#3fa05a", fw2:"#46ab61", edge:"#2a7a45", green1:"#9be38a", green2:"#60bf5c", sand:"#fff0c6", sandE:"#e2cc8a", tree:"palm", treeC:["#1f7a3d","#3aa35a"], label:"#e9fff0"},
+  {id:"alpine", names:["Glacier Peak","Timberline","Snowcap","Eagle Pass"], suffix:"Mountain Course",
+   rough:"#e9eef2", speck:"#d7e0e6", fw1:"#4c8e57", fw2:"#55985f", edge:"#9fb4bf", green1:"#8fd68a", green2:"#5bae5f", sand:"#ece3c8", sandE:"#c9bb8e", tree:"pine", treeC:["#1d4d35","#2b6a48"], label:"#33505e"},
+];
+const THEME = THEMES[hashStr("theme:"+DAY) % THEMES.length];
+const COURSE_NAME = THEME.names[hashStr("name:"+DAY) % THEME.names.length] + " " + THEME.suffix;
+
+// ---------- daily schedule (deterministic per sports mix, no repeats) ----------
+function buildSchedule(uptoDay, sports){
+  const cats0 = CATEGORIES.filter(c => sports.includes(c.sport));
+  const key = mixKey(sports);
+  const nSports = new Set(cats0.map(c=>c.sport)).size;
+  const sportCap = Math.max(3, Math.ceil(HOLES / nSports));
+  const perCatDay = Math.max(1, Math.ceil(HOLES / cats0.length));        // a list can appear more than once a day only for tiny mixes
+  // how long before a (list, rank) can come back, scaled to how much data this mix has
+  const avgSlots = cats0.reduce((a,c)=>a+c.maxTarget,0) / cats0.length / 3;
+  const memory = Math.max(4, Math.min(30, Math.floor(avgSlots * 0.8 / (HOLES / cats0.length))));
+  const used = {}, lastCat = {}, lastTarget = {}, rankCounts = {};
+  cats0.forEach(c => { used[c.id] = []; lastCat[c.id] = -99; const m={}; c.rows.forEach(r=>m[r[2]]=(m[r[2]]||0)+1); rankCounts[c.id]=m; });
+  let today = null;
+  for (let d = 0; d <= uptoDay; d++) {
+    const rnd = mulberry32(hashStr("sportsgolf:" + key + ":" + d));
+    const chosen = [];
+    const avail = (c, gap, loose) => {
+      const out = [];
+      for (const r of c.rows) {
+        const rk = r[2];
+        if (rk > c.maxTarget || rankCounts[c.id][rk] !== 1) continue;
+        if (!loose && used[c.id].some(u => d - u.day < memory && Math.abs(u.rank - rk) < gap)) continue;
+        if (chosen.some(h => h.cat.id === c.id && Math.abs(h.rank - rk) < (loose ? 3 : 10))) continue;
+        const lt = lastTarget[r[0]];
+        if (!loose && lt !== undefined && d - lt < Math.min(TARGET_COOLDOWN_DAYS, memory)) continue;
+        if (loose && used[c.id].some(u => u.day === d - 1 && u.rank === rk)) continue;
+        out.push(rk);
+      }
+      return out;
+    };
+    const cats = cats0.map(c => ({c, k: lastCat[c.id] + rnd()*0.9})).sort((a,b)=>a.k-b.k).map(x=>x.c);
+    const sportCount = {};
+    outer: for (const [gap, loose] of [[6,false],[3,false],[2,false],[1,true]]) {
+      for (let pass = 1; pass <= (loose ? HOLES : perCatDay); pass++) {
+        for (const c of cats) {
+          if (chosen.length >= HOLES) break outer;
+          if (chosen.filter(h => h.cat.id === c.id).length >= pass) continue;
+          if (!loose && (sportCount[c.sport]||0) >= sportCap) continue;
+          const pool = avail(c, gap, loose);
+          if (!pool.length) continue;
+          const b = rnd(); const lo = b < .3 ? 1 : b < .7 ? 26 : 71, hi = b < .3 ? 25 : b < .7 ? 70 : 999;
+          let sub = pool.filter(r => r >= lo && r <= hi); if (!sub.length) sub = pool;
+          chosen.push({cat:c, rank: sub[Math.floor(rnd()*sub.length)]});
+          sportCount[c.sport] = (sportCount[c.sport]||0) + 1;
+        }
+      }
+    }
+    for (let i = chosen.length-1; i>0; i--) { const j=Math.floor(rnd()*(i+1)); [chosen[i],chosen[j]]=[chosen[j],chosen[i]]; }
+    for (const h of chosen) {
+      used[h.cat.id].push({rank:h.rank, day:d}); lastCat[h.cat.id] = d;
+      const row = h.cat.rows.find(r => r[2] === h.rank); lastTarget[row[0]] = d;
+      h.target = row;
+      h.layout = hashStr(h.cat.id + ":" + h.rank + ":" + d + ":" + key);
+    }
+    today = chosen;
+  }
+  return today;
+}
+
+// ---------- name matching ----------
+const norm = s => s.normalize("NFD").replace(/[̀-ͯ]/g,"").toLowerCase()
+  .replace(/\b(jr|sr|ii|iii|iv)\b\.?/g,"").replace(/[^a-z0-9 ]/g,"").replace(/\s+/g," ").trim();
+const NICK = {"shaq":"shaquille oneal","kareem":"kareem abduljabbar","magic":"magic johnson","dr j":"julius erving","mj":"michael jordan",
+  "king james":"lebron james","the great one":"wayne gretzky","ovi":"alex ovechkin","big papi":"david ortiz","arod":"alex rodriguez",
+  "megatron":"calvin johnson","lt":"ladainian tomlinson","mjd":"maurice jonesdrew","cmc":"christian mccaffrey","sga":"shai gilgeousalexander",
+  "jsn":"jaxon smithnjigba","arsb":"amonra st brown","the bus":"jerome bettis","beast mode":"marshawn lynch","hank aaron":"henry aaron",
+  "pistol pete":"pete maravich","the mailman":"karl malone","the dream":"hakeem olajuwon","mr hockey":"gordie howe"};
+function lev(a,b){const m=a.length,n=b.length;if(!m)return n;if(!n)return m;let p=Array.from({length:n+1},(_,i)=>i);
+  for(let i=1;i<=m;i++){const c=[i];for(let j=1;j<=n;j++)c[j]=Math.min(p[j]+1,c[j-1]+1,p[j-1]+(a[i-1]===b[j-1]?0:1));p=c;}return p[n];}
+function firstNameCount(cat, f){ cat._fn = cat._fn || cat.rows.reduce((m,r)=>{const k=norm(r[0]).split(" ")[0]; m[k]=(m[k]||0)+1; return m;},{}); return cat._fn[f]||0; }
+function matchGuess(guess, cat, targetRank){
+  let g = norm(guess); if (!g) return null;
+  if (NICK[g]) g = NICK[g];
+  const soft = s => s.replace(/ph/g,"f").replace(/ck/g,"k").replace(/ie/g,"ei").replace(/y/g,"i").replace(/z/g,"s").replace(/(.)\1+/g,"$1");
+  const gt = g.split(" "), gLast = gt[gt.length-1], gFirst = gt[0], gs = soft(g.replace(/ /g,""));
+  const gSorted = gt.slice().sort().join(" ");
+  const lastTol = L => L >= 7 ? 2 : L >= 4 ? 1 : 0;
+  let best = null;
+  for (const r of cat.rows) {
+    const n = norm(r[0]); const nt = n.split(" "); const nLast = nt[nt.length-1], nFirst = nt[0];
+    let score = 0;
+    if (n === g || n.replace(/ /g,"") === g.replace(/ /g,"") || soft(n.replace(/ /g,"")) === gs || nt.slice().sort().join(" ") === gSorted) score = 1;
+    else {
+      const sim = Math.max(1 - lev(n, g) / Math.max(n.length, g.length), 1 - lev(soft(n.replace(/ /g,"")), gs) / Math.max(n.length, gs.length));
+      if (sim >= 0.75) score = sim;
+      else if (gt.length >= 2 && lev(soft(nLast), soft(gLast)) <= lastTol(nLast.length) &&
+               (lev(nFirst, gFirst) <= 2 || (gFirst.length === 1 && nFirst[0] === gFirst) ||
+                (Math.min(nFirst.length, gFirst.length) >= 3 && (nFirst.startsWith(gFirst) || gFirst.startsWith(nFirst))))) score = 0.74;
+      else if (gt.length === 1 && g.length >= 4 && lev(soft(nLast), soft(g)) <= (g.length >= 6 ? 1 : 0)) score = 0.7;   // last name only
+      else if (gt.length === 1 && g.length >= 4 && nFirst === g && firstNameCount(cat, g) === 1) score = 0.69; // unique first name ("Puka")
+    }
+    if (!score) continue;
+    const dist = Math.abs(r[2] - targetRank);
+    if (!best || score > best.score + 1e-9 || (Math.abs(score-best.score)<1e-9 && dist < best.dist)) best = {row:r, score, dist};
+  }
+  return best ? best.row : null;
+}
+
+// ---------- scoring ----------
+function scoreShot(hole, row){
+  if (!row) return {...WATER, ob:true, dist:null, strokes:WATER.s};
+  const dist = Math.abs(row[2] - hole.rank);
+  const b = BANDS.find(b => dist <= b.max);
+  return {...b, dist, strokes:b.s, hio: dist === 0};
+}
+const pick = a => a[Math.floor(Math.random()*a.length)];
+function callFor(shot){
+  const b = shot.ob ? WATER : BANDS.find(b => shot.dist <= b.max);
+  return {...b, q: shot.quip || ""};
+}
+
+// ---------- state ----------
+let SPORTS = (store.get("sportsgolf:sports") || ALL_SPORTS).filter(s => ALL_SPORTS.includes(s));
+if (CATEGORIES.filter(c => SPORTS.includes(c.sport)).length < 3) SPORTS = ALL_SPORTS.slice();
+let MIX = mixKey(SPORTS);
+let ROUND = null, KEY = null, state = {shots:[]}, current = 0;
+let NAME = store.get("sportsgolf:name") || "";
+function loadMix(){
+  MIX = mixKey(SPORTS);
+  ROUND = buildSchedule(DAY, SPORTS);
+  KEY = "sportsgolf:" + TODAY + ":" + MIX;
+  state = store.get(KEY) || {shots: []};
+  current = Math.min(state.shots.length, HOLES-1);
+}
+const total = () => state.shots.reduce((a,s)=>a+s.strokes,0);
+const spotsOff = () => state.shots.reduce((a,s)=>a+(s.spots ?? (s.ob ? 100 : s.dist||0)),0);
+const strikeCount = () => state.shots.reduce((a,s)=>a+((s.strikes||[]).length),0);
+
+// ---------- hole drawing ----------
+const SVGNS = "http://www.w3.org/2000/svg";
+function el(tag, attrs, parent){const e=document.createElementNS(SVGNS,tag);for(const k in attrs)e.setAttribute(k,attrs[k]);if(parent)parent.appendChild(e);return e;}
+const qb = (p0,p1,p2,t)=>({x:(1-t)*(1-t)*p0.x+2*(1-t)*t*p1.x+t*t*p2.x, y:(1-t)*(1-t)*p0.y+2*(1-t)*t*p1.y+t*t*p2.y});
+const cb = (p0,p1,p2,p3,t)=>{const u=1-t;return {x:u*u*u*p0.x+3*u*u*t*p1.x+3*u*t*t*p2.x+t*t*t*p3.x, y:u*u*u*p0.y+3*u*u*t*p1.y+3*u*t*t*p2.y+t*t*t*p3.y};};
+const LAYOUTS = ["dogleg","island","creek","lakefront","sbend"];
+let geo = null;
+function blob(svg, x, y, rx, ry, fill, stroke, R){
+  const n=9, pts=[...Array(n)].map((_,i)=>{const a=i/n*Math.PI*2, k=.82+R()*.3; return [x+Math.cos(a)*rx*k, y+Math.sin(a)*ry*k];});
+  let d=`M ${(pts[0][0]+pts[n-1][0])/2} ${(pts[0][1]+pts[n-1][1])/2}`;
+  pts.forEach((p,i)=>{const q=pts[(i+1)%n]; d+=` Q ${p[0]} ${p[1]} ${(p[0]+q[0])/2} ${(p[1]+q[1])/2}`;});
+  return el("path",{d:d+" Z",fill,stroke,"stroke-width":2},svg);
+}
+function tree(svg, t, kind, cols){
+  const {x,y}=t;
+  el("ellipse",{cx:x+4,cy:y+12,rx:14,ry:5,fill:"#000",opacity:.18},svg);
+  if (kind==="pine"){ el("path",{d:`M ${x} ${y-20} L ${x+12} ${y+8} L ${x-12} ${y+8} Z`,fill:cols[0]},svg); el("path",{d:`M ${x} ${y-12} L ${x+8} ${y+2} L ${x-8} ${y+2} Z`,fill:cols[1]},svg); }
+  else if (kind==="palm"){ el("path",{d:`M ${x} ${y+12} Q ${x+4} ${y} ${x+2} ${y-12}`,stroke:"#8a6a3c","stroke-width":3,fill:"none"},svg);
+    for (let i=0;i<5;i++){const a=-Math.PI/2+(i-2)*0.7; el("path",{d:`M ${x+2} ${y-12} q ${Math.cos(a)*10} ${Math.sin(a)*10-4} ${Math.cos(a)*18} ${Math.sin(a)*14+6}`,stroke:cols[i%2],"stroke-width":4,fill:"none","stroke-linecap":"round"},svg);} }
+  else if (kind==="cactus"){ el("rect",{x:x-4,y:y-16,width:8,height:28,rx:4,fill:cols[0]},svg); el("path",{d:`M ${x-4} ${y-2} h -6 v -8 M ${x+4} ${y-6} h 6 v -8`,stroke:cols[0],"stroke-width":5,fill:"none","stroke-linecap":"round"},svg); }
+  else if (kind==="gorse"){ el("ellipse",{cx:x,cy:y,rx:14,ry:9,fill:cols[0]},svg); for(let i=0;i<6;i++) el("circle",{cx:x-9+i*3.6,cy:y-3+(i%2)*4,r:1.8,fill:cols[1]},svg); }
+  else { el("circle",{cx:x,cy:y,r:15,fill:cols[0]},svg); el("circle",{cx:x-5,cy:y-4,r:9,fill:cols[1]},svg); }
+}
+function drawHole(hole){
+  const svg = $("hole"); svg.innerHTML = "";
+  const R = mulberry32(hole.layout), T = THEME;
+  const layout = LAYOUTS[hole.layout % LAYOUTS.length];
+  const tee = {x:180, y:470};
+  const defs = el("defs",{},svg);
+  const pat = el("pattern",{id:"mow",width:36,height:36,patternUnits:"userSpaceOnUse"},defs);
+  el("rect",{width:36,height:18,fill:T.fw1},pat); el("rect",{y:18,width:36,height:18,fill:T.fw2},pat);
+  const gg = el("radialGradient",{id:"gg"},defs); el("stop",{offset:"0%","stop-color":T.green1},gg); el("stop",{offset:"100%","stop-color":T.green2},gg);
+  const wg = el("linearGradient",{id:"wg",x1:0,y1:0,x2:1,y2:1},defs); el("stop",{offset:"0%","stop-color":"#5aa8e6"},wg); el("stop",{offset:"100%","stop-color":"#2a6fae"},wg);
+  el("rect",{x:0,y:0,width:360,height:520,fill:T.rough},svg);
+  for (let i=0;i<80;i++) el("circle",{cx:R()*360,cy:R()*520,r:1+R()*1.8,fill:T.speck,opacity:.8},svg);
+  if (THEME.id==="tropical") { el("path",{d:`M 0 0 H 360 V 26 Q 270 44 180 30 T 0 34 Z`,fill:"#3fb6d6"},svg); el("path",{d:`M 0 34 Q 90 22 180 30 T 360 26`,stroke:"#fff0c6","stroke-width":8,fill:"none"},svg); }
+  const side = R() < .5 ? -1 : 1;
+  let green, fwPath, fw, water = null, waterDraw, approachEnd = 1, creek = null;
+  if (layout === "island") {
+    green = {x: 180 + side*(20+R()*30), y: 120};
+    const end = {x: 180 + side*10, y: 300};
+    fw = t => ({x: tee.x + (end.x-tee.x)*t, y: tee.y + (end.y-tee.y)*t});
+    fwPath = `M ${tee.x} ${tee.y+10} L ${end.x} ${end.y}`;
+    water = {x: green.x - side*10, y: 205};
+    waterDraw = () => { blob(svg, green.x, 175, 150, 120, "url(#wg)", "#1e5a8f", R); };
+  } else if (layout === "sbend") {
+    const a = {x: 180 - side*110, y: 360}, b = {x: 180 + side*110, y: 220};
+    green = {x: 180 - side*(30+R()*20), y: 100};
+    fw = t => cb(tee, a, b, {x:green.x, y:green.y+22}, t);
+    fwPath = `M ${tee.x} ${tee.y+10} C ${a.x} ${a.y} ${b.x} ${b.y} ${green.x} ${green.y+22}`;
+    water = {x: 180 + side*112, y: 380 + R()*30};
+    waterDraw = () => blob(svg, water.x, water.y, 52, 34, "url(#wg)", "#1e5a8f", R);
+  } else {
+    const dog = (layout === "lakefront" ? side*130 : (R()-.5)*190);
+    green = {x: 180 + dog*0.5 + (R()-.5)*30, y: 105};
+    const ctrl = {x: 180 + dog, y: 290};
+    fw = t => qb({x:tee.x,y:tee.y}, ctrl, {x:green.x,y:green.y+20}, t);
+    fwPath = `M ${tee.x} ${tee.y+10} Q ${ctrl.x} ${ctrl.y} ${green.x} ${green.y+20}`;
+    if (layout === "lakefront") {
+      water = {x: 180 - side*120, y: 280};
+      waterDraw = () => blob(svg, 180 - side*150, 280, 110, 190, "url(#wg)", "#1e5a8f", R);
+    } else if (layout === "creek") {
+      const cy = 250 + R()*80; creek = cy;
+      water = {x: fw(.5).x + (R()-.5)*60, y: cy};
+      waterDraw = () => { el("path",{d:`M -10 ${cy} C 90 ${cy-30}, 200 ${cy+34}, 370 ${cy-10}`,stroke:"#2a6fae","stroke-width":24,fill:"none"},svg);
+        el("path",{d:`M -10 ${cy} C 90 ${cy-30}, 200 ${cy+34}, 370 ${cy-10}`,stroke:"#5aa8e6","stroke-width":16,fill:"none"},svg);
+        const bp = {x: fw(.55).x, y: cy}; el("rect",{x:bp.x-8,y:cy-16,width:16,height:32,rx:2,fill:"#9b7a4f",stroke:"#6e5333"},svg); };
+    } else {
+      water = {x: 180 + side*(95 + R()*25) - dog*0.2, y: 230 + R()*90};
+      waterDraw = () => blob(svg, water.x, water.y, 58, 38, "url(#wg)", "#1e5a8f", R);
+    }
+  }
+  if (layout !== "island") { el("path",{d:fwPath,stroke:T.edge,"stroke-width":96,fill:"none","stroke-linecap":"round",opacity:.55},svg); el("path",{d:fwPath,stroke:"url(#mow)","stroke-width":80,fill:"none","stroke-linecap":"round"},svg); }
+  waterDraw();
+  if (layout === "island") { el("path",{d:fwPath,stroke:T.edge,"stroke-width":96,fill:"none","stroke-linecap":"round",opacity:.55},svg); el("path",{d:fwPath,stroke:"url(#mow)","stroke-width":80,fill:"none","stroke-linecap":"round"},svg); }
+  for (let i=0;i<3;i++) el("path",{d:`M ${water.x-20+i*14} ${water.y-4+i*7} q 7 -5 14 0`,stroke:"#bfe0fb","stroke-width":1.5,fill:"none",opacity:.7},svg);
+  // bunkers
+  const bunker = {x: green.x - side*58, y: green.y + 30};
+  el("ellipse",{cx:bunker.x,cy:bunker.y,rx:28,ry:15,fill:T.sand,stroke:T.sandE,"stroke-width":2,transform:`rotate(${side*20} ${bunker.x} ${bunker.y})`},svg);
+  const nb = layout==="island" ? 0 : 1 + Math.floor(R()*3);
+  for (let i=0;i<nb;i++){ const p = fw(.35 + R()*.4); const s2 = R()<.5?-1:1; el("ellipse",{cx:p.x+s2*46,cy:p.y,rx:16+R()*8,ry:10,fill:T.sand,stroke:T.sandE,"stroke-width":2},svg); }
+  // trees
+  const trees = [];
+  for (let i=0;i<18;i++){ const s=i%2?1:-1; const y=40+R()*440; trees.push({x: s<0 ? 10+R()*42 : 308+R()*42, y}); }
+  const wet = t => creek ? Math.abs(t.y - creek) < 30
+    : layout === "island" ? ((t.x-green.x)/165)**2 + ((t.y-175)/135)**2 < 1
+    : layout === "lakefront" ? ((t.x-(180-side*150))/125)**2 + ((t.y-280)/205)**2 < 1
+    : Math.hypot(t.x-water.x, t.y-water.y) < 70;
+  trees.filter(t => !wet(t)).sort((a,b)=>a.y-b.y).forEach(t=>tree(svg, t, T.tree, T.treeC));
+  // green + cup + flag
+  el("ellipse",{cx:green.x,cy:green.y,rx:62,ry:40,fill:T.green2,opacity:.6},svg);
+  el("ellipse",{cx:green.x,cy:green.y,rx:54,ry:34,fill:"url(#gg)",stroke:T.edge,"stroke-width":2},svg);
+  const cup = {x: green.x + (R()-.5)*30, y: green.y + (R()-.5)*14};
+  el("ellipse",{cx:cup.x,cy:cup.y,rx:5,ry:3,fill:"#0c1a10"},svg);
+  const flag = el("g",{},svg);
+  el("line",{x1:cup.x,y1:cup.y,x2:cup.x,y2:cup.y-46,stroke:"#f3f3f3","stroke-width":2},flag);
+  el("path",{id:"flagCloth",d:`M ${cup.x} ${cup.y-46} L ${cup.x+24} ${cup.y-39} L ${cup.x} ${cup.y-32} Z`,fill:"#e23b3b"},flag);
+  el("text",{x:cup.x+5,y:cup.y-37,"font-size":8,"font-family":"Barlow Condensed","font-weight":800,fill:"#fff"},flag).textContent = current+1;
+  // tee + golfer
+  el("rect",{x:tee.x-26,y:tee.y-4,width:52,height:26,rx:6,fill:T.fw1,stroke:T.edge},svg);
+  el("circle",{cx:tee.x-16,cy:tee.y+9,r:3,fill:"#e23b3b"},svg); el("circle",{cx:tee.x+16,cy:tee.y+9,r:3,fill:"#e23b3b"},svg);
+  const golfer = el("g",{},svg);
+  el("circle",{cx:tee.x-14,cy:tee.y-26,r:5,fill:"#f1c9a5"},golfer);
+  el("path",{d:`M ${tee.x-14} ${tee.y-21} l 0 16 M ${tee.x-14} ${tee.y-5} l -5 10 M ${tee.x-14} ${tee.y-5} l 5 10`,stroke:"#16241b","stroke-width":3,"stroke-linecap":"round"},golfer);
+  el("line",{id:"club",x1:tee.x-14,y1:tee.y-15,x2:tee.x-2,y2:tee.y+6,stroke:"#9aa4a0","stroke-width":2.4,"stroke-linecap":"round"},golfer);
+  const names = {dogleg:"Dogleg", island:"Island Green", creek:"Creek Crossing", lakefront:"Lakefront", sbend:"S-Bend"};
+  el("text",{x:12,y:508,"font-size":11,"font-family":"Barlow Condensed","font-weight":700,fill:T.label},svg).textContent = `HOLE ${current+1} · ${names[layout].toUpperCase()}`;
+  el("ellipse",{id:"shadow",cx:tee.x,cy:tee.y+5,rx:5,ry:2.4,fill:"#000",opacity:.3},svg);
+  el("circle",{id:"ball",cx:tee.x,cy:tee.y+3,r:4.5,fill:"#fff",stroke:"#cfcfcf","stroke-width":.8},svg);
+  geo = {tee, green, cup, water, bunker, trees, fw, creek, layout};
+}
+function landingFor(res){
+  const g = geo, R = Math.random;
+  if (res.hio) return {...g.cup, kind:"cup"};
+  if (res.ob) return {x:g.water.x + (R()-.5)*24, y:g.water.y + (R()-.5)*12, kind:"water"};
+  const d = res.dist;
+  if (d <= 10) { const a = R()*Math.PI*2, r = d <= 5 ? 6 + d*3 : 26 + (d-6)*3; return {x:g.cup.x+Math.cos(a)*r, y:g.cup.y+Math.sin(a)*r*.6, kind:"green"}; }
+  if (d <= 20) { if (R() < .5) return {x:g.bunker.x+(R()-.5)*20, y:g.bunker.y+(R()-.5)*8, kind:"sand"}; const p=g.fw(g.layout==="island"?.98:.9); return {x:p.x+(R()-.5)*30, y:p.y, kind:"fairway"}; }
+  const pathPt = t => { let p = g.fw(t); if (g.creek && Math.abs(p.y - g.creek) < 26) p = g.fw(t - .12); return p; };
+  if (d <= 30) { const p = pathPt(g.layout==="island" ? .7 : .62 + R()*.12); return {x:p.x+(R()-.5)*36, y:p.y, kind:"fairway"}; }
+  if (d <= 40) { const p = pathPt(.4 + R()*.2); const s = R()<.5?-1:1; return {x:Math.min(345,Math.max(15,p.x+s*(58+R()*14))), y:p.y, kind:"rough"}; }
+  const tr = g.trees[Math.floor(R()*g.trees.length)]; return {x:tr.x+(R()-.5)*10, y:tr.y+10, kind:"trees"};
+}
+function animateShot(res){
+  return new Promise(done => {
+    const ball = $("ball"), shadow = $("shadow"), club = $("club");
+    const g = geo; const start = {x:g.tee.x, y:g.tee.y+3};
+    const land = landingFor(res);
+    club.style.transformOrigin = `${g.tee.x-14}px ${g.tee.y-15}px`; club.style.transformBox = "view-box";
+    try { club.animate([{transform:"rotate(0deg)"},{transform:"rotate(-110deg)"},{transform:"rotate(40deg)"}],{duration:420,easing:"ease-in",fill:"forwards"}); } catch(e){}
+    const dist = Math.hypot(land.x-start.x, land.y-start.y);
+    const peak = {x:(start.x+land.x)/2, y:Math.min(start.y,land.y) - 60 - dist*.35};
+    const T = 1100 + dist*1.6; let t0 = null;
+    setTimeout(() => requestAnimationFrame(function step(ts){
+      if (!t0) t0 = ts; const k = Math.min(1,(ts-t0)/T); const e = k<.5 ? 2*k*k : 1-Math.pow(-2*k+2,2)/2;
+      const p = qb(start, peak, land, e);
+      const ground = {x:start.x+(land.x-start.x)*e, y:start.y+(land.y-start.y)*e};
+      const h = Math.sin(Math.PI*e);
+      ball.setAttribute("cx",p.x); ball.setAttribute("cy",p.y); ball.setAttribute("r",4.5+h*4.5);
+      shadow.setAttribute("cx",ground.x); shadow.setAttribute("cy",ground.y+3); shadow.setAttribute("opacity",.3-h*.18); shadow.setAttribute("rx",5+h*3);
+      if (k < 1) return requestAnimationFrame(step);
+      afterLanding(land).then(done);
+    }), 300);
+  });
+}
+function afterLanding(land){
+  const svg = $("hole"), ball = $("ball"), shadow = $("shadow");
+  return new Promise(done => {
+    if (land.kind === "water") {
+      shadow.setAttribute("opacity",0); ball.setAttribute("opacity",0);
+      for (let i=0;i<3;i++){ const c = el("ellipse",{cx:land.x,cy:land.y,rx:2,ry:1,fill:"none",stroke:"#e9f5ff","stroke-width":2},svg);
+        const st=performance.now()+i*180; (function grow(ts){const k=Math.min(1,Math.max(0,(ts-st)/900)); c.setAttribute("rx",2+24*k); c.setAttribute("ry",1+10*k); c.setAttribute("opacity",1-k); if(k<1)requestAnimationFrame(grow);})(performance.now()); }
+      for (let i=0;i<8;i++){ const d = el("circle",{cx:land.x,cy:land.y,r:2,fill:"#cfe8ff"},svg); const a=-Math.PI*(i/7); const st=performance.now();
+        (function fly(ts){const k=Math.min(1,(ts-st)/600); d.setAttribute("cx",land.x+Math.cos(a)*20*k); d.setAttribute("cy",land.y+Math.sin(a)*24*k+30*k*k); d.setAttribute("opacity",1-k); if(k<1)requestAnimationFrame(fly);})(st); }
+      svg.parentElement.classList.add("shake"); setTimeout(()=>svg.parentElement.classList.remove("shake"),450);
+      setTimeout(done, 900); return;
+    }
+    if (land.kind === "cup") {
+      const st = performance.now();
+      (function sink(ts){const k=Math.min(1,(ts-st)/450); ball.setAttribute("r",4.5*(1-k)); shadow.setAttribute("opacity",.3*(1-k)); if(k<1)requestAnimationFrame(sink); else { waveFlag(); confetti(); setTimeout(done,500);} })(st);
+      return;
+    }
+    const st = performance.now(); const x0=+ball.getAttribute("cx"), y0=+ball.getAttribute("cy");
+    const roll = land.kind==="green" ? 10 : land.kind==="sand" ? 2 : land.kind==="trees" ? 0 : 6;
+    const dx = (geo.cup.x - x0), dy = (geo.cup.y - y0), L = Math.hypot(dx,dy)||1;
+    (function r(ts){const k=Math.min(1,(ts-st)/500); const e=1-Math.pow(1-k,3); const b=Math.abs(Math.sin(k*Math.PI*2))*(1-k)*5;
+      ball.setAttribute("cx",x0+dx/L*roll*e); ball.setAttribute("cy",y0+dy/L*roll*e-b); ball.setAttribute("r",4.5);
+      shadow.setAttribute("cx",x0+dx/L*roll*e); shadow.setAttribute("cy",y0+dy/L*roll*e+3); shadow.setAttribute("rx",5);
+      if(k<1)requestAnimationFrame(r); else { if (land.kind==="sand") puff(x0,y0); done(); } })(st);
+  });
+}
+function puff(x,y){const svg=$("hole");for(let i=0;i<6;i++){const p=el("circle",{cx:x,cy:y,r:2,fill:"#f4e6b8"},svg);const a=-Math.PI*Math.random();const st=performance.now();(function f(ts){const k=Math.min(1,(ts-st)/500);p.setAttribute("cx",x+Math.cos(a)*14*k);p.setAttribute("cy",y+Math.sin(a)*10*k);p.setAttribute("opacity",1-k);if(k<1)requestAnimationFrame(f);})(st);}}
+function waveFlag(){const c=$("flagCloth"); if(!c) return; c.style.transformBox="fill-box"; try{c.animate([{transform:"scaleX(1)"},{transform:"scaleX(.6)"},{transform:"scaleX(1.1)"},{transform:"scaleX(1)"}],{duration:500,iterations:3});}catch(e){}}
+function confetti(){
+  const cv=$("confetti"), ctx=cv.getContext("2d"); cv.width=innerWidth; cv.height=innerHeight;
+  const cols=["#f4b73a","#e23b3b","#fbf5e6","#5fb55a","#3d8fd1"]; const ps=[...Array(160)].map(()=>({x:innerWidth/2,y:innerHeight/3,vx:(Math.random()-.5)*14,vy:-Math.random()*14-4,r:4+Math.random()*5,c:cols[Math.floor(Math.random()*5)],a:Math.random()*6}));
+  const st=performance.now();(function f(ts){const k=(ts-st)/1000;ctx.clearRect(0,0,cv.width,cv.height);ps.forEach(p=>{p.vy+=.35;p.x+=p.vx;p.y+=p.vy;p.a+=.2;ctx.save();ctx.translate(p.x,p.y);ctx.rotate(p.a);ctx.fillStyle=p.c;ctx.fillRect(-p.r/2,-p.r/4,p.r,p.r/2);ctx.restore();});if(k<2.6)requestAnimationFrame(f);else ctx.clearRect(0,0,cv.width,cv.height);})(st);
+}
+
+// ---------- progress strip ----------
+const CLS_COLOR = {"sc-hio":"#f4b73a","sc-ok":"#7fcf72","sc-par":"#e8ece4","sc-meh":"#f2c66b","sc-bad":"#e86a5f","sc-water":"#5aa8e6"};
+function drawStrip(walkTo){
+  const svg=$("strip"); svg.innerHTML="";
+  const xs=[...Array(HOLES)].map((_,i)=>50+i*100);
+  el("path",{d:xs.map((x,i)=>`${i?"L":"M"} ${x} ${32+(i%2?-8:8)}`).join(" "),stroke:"rgba(251,245,230,.35)","stroke-width":4,fill:"none","stroke-dasharray":"2 8","stroke-linecap":"round"},svg);
+  xs.forEach((x,i)=>{
+    const y = 32+(i%2?-8:8), shot = state.shots[i];
+    el("ellipse",{cx:x,cy:y+4,rx:22,ry:9,fill: i===current ? "#5fb55a" : "rgba(0,0,0,.18)"},svg);
+    el("line",{x1:x,y1:y+4,x2:x,y2:y-20,stroke:"#fbf5e6","stroke-width":2},svg);
+    el("path",{d:`M ${x} ${y-20} l 14 4 l -14 4 z`,fill: shot ? CLS_COLOR[callFor(shot).cls] : (i===current ? "#e23b3b" : "rgba(251,245,230,.5)")},svg);
+    el("text",{x,y:y+26,"text-anchor":"middle",class:"lbl"},svg).textContent = shot ? toPar(shot.strokes) : (i+1);
+  });
+  const cart = el("text",{x:xs[Math.min(walkTo??current,HOLES-1)]-34,y:28,"font-size":20},svg); cart.textContent="🏌️";
+  if (walkTo !== undefined && walkTo > 0) {
+    const from = xs[walkTo-1]-34, to = xs[Math.min(walkTo,HOLES-1)]-34, st=performance.now();
+    (function mv(ts){const k=Math.min(1,(ts-st)/900); cart.setAttribute("x",from+(to-from)*(1-Math.pow(1-k,3))); if(k<1)requestAnimationFrame(mv);})(st);
+  }
+}
+
+// ---------- scorecard ----------
+function drawScorecard(tblId){
+  const t=$(tblId); let h="<tr><th>HOLE</th>"; for(let i=0;i<HOLES;i++)h+=`<th>${i+1}</th>`; h+="<th>TOT</th></tr>";
+  h+=`<tr><td class="lab">League</td>`+ROUND.map(r=>`<td>${r.cat.sport}</td>`).join("")+"<td></td></tr>";
+  h+=`<tr><td class="lab">Rank</td>`+ROUND.map(r=>`<td>#${r.rank}</td>`).join("")+"<td></td></tr>";
+  h+=`<tr><td class="lab">Result</td>`;
+  for(let i=0;i<HOLES;i++){const s=state.shots[i]; h+= s ? `<td class="${callFor(s).cls}" title="${callFor(s).t}">${callFor(s).e}</td>` : `<td class="${i===current&&tblId==="scTable"?"cur":""}">·</td>`;}
+  h+=`<td></td></tr><tr><td class="lab">Score</td>`;
+  for(let i=0;i<HOLES;i++){const s=state.shots[i]; h+= s ? `<td class="${callFor(s).cls}">${toPar(s.strokes)}</td>` : `<td>·</td>`;}
+  h+=`<td><b>${toPar(total())}</b></td></tr><tr><td class="lab">Spots off</td>`;
+  for(let i=0;i<HOLES;i++){const s=state.shots[i]; h+= s ? `<td>${s.ob ? "💧" : s.dist}${(s.strikes||[]).length ? `<sup style="color:var(--flag)">${"✕".repeat(s.strikes.length)}</sup>` : ""}</td>` : `<td>·</td>`;}
+  h+=`<td><b>${spotsOff()}</b></td></tr>`; t.innerHTML=h;
+}
+
+// ---------- hole flow ----------
+function showHole(i, walked){
+  current = i; const hole = ROUND[i];
+  $("holeN").textContent = `Hole ${i+1}`;
+  $("holeYd").textContent = `${120 + hole.rank*4} yds · ${hole.cat.scope==="career"?"Career":"Season"}`;
+  const tag = $("sportTag"); tag.textContent = hole.cat.sport; tag.className = "sport s-"+hole.cat.sport;
+  $("question").innerHTML = `Name the player ranked <span class="rk">${ord(hole.rank)}</span> ${hole.cat.q}.`;
+  $("result").className = "result"; $("result").innerHTML = "";
+  $("guess").value = ""; $("guess").disabled = false; $("swingBtn").disabled = false; $("giveUpBtn").disabled = false;
+  if (!state.pending || state.pending.hole !== i) { state.pending = {hole:i, strikes:[]}; store.set(KEY, state); }
+  drawStrikes();
+  $("strokeBadge").textContent = `${COURSE_NAME} · ${toPar(total())}`;
+  drawHole(hole); drawStrip(walked ? i : undefined); drawScorecard("scTable");
+  setTimeout(()=>$("guess").focus(), 50);
+}
+const escapeHtml = s => String(s).replace(/[&<>"']/g,c=>({"&":"&amp;","<":"&lt;",">":"&gt;",'"':"&quot;","'":"&#39;"}[c]));
+function revealHTML(hole, shot){
+  const c = callFor(shot), row = hole.target;
+  const off = shot.ob ? "" : shot.dist === 0 ? "" : ` You were ${shot.dist} spot${shot.dist===1?"":"s"} off.`;
+  const yours = shot.matched ? `${escapeHtml(shot.matched[0])} (#${shot.matched[2]} · ${fmtNum(shot.matched[1])} ${hole.cat.unit})` : `Three strikes. Nobody on this leaderboard.`;
+  return `<p class="call ${c.c==="par"?"ok":c.c}">${c.t}</p><p class="quip">${escapeHtml(c.q)}${off} ${toPar(shot.strokes)}.</p>
+  <div class="reveal">
+    <div class="big">${ord(hole.rank)}: ${escapeHtml(row[0])}</div>
+    <div><div class="k">${hole.cat.unit}</div><div class="v">${fmtNum(row[1])}</div></div>
+    <div><div class="k">${row[3] ? (hole.cat.scope==="season-alltime"?"Season":"Team / Years") : "Source"}</div><div class="v">${escapeHtml(row[3] || hole.cat.src)}</div></div>
+    <div style="grid-column:1/-1"><div class="k">Your shot</div><div class="v">${shot.gaveUp && !shot.matched ? "Gave up" : yours}${shot.dist ? ` · ${shot.dist} off` : ""}</div></div>
+    ${shot.strikes && shot.strikes.length ? `<div style="grid-column:1/-1"><div class="k">Strikes</div><div class="v">${shot.strikes.map(escapeHtml).join(", ")}</div></div>` : ""}
+    <div style="grid-column:1/-1"><a href="${hole.cat.url}" target="_blank" rel="noopener">See the full leaderboard on ${escapeHtml(hole.cat.src.replace(/ \(.*\)$/,""))} ↗</a></div>
+  </div>`;
+}
+
+let busy = false;
+const MAX_STRIKES = 3, SPLASH_SPOTS = 100;
+function drawStrikes(msg){
+  const n = (state.pending && state.pending.strikes.length) || 0;
+  $("strikeDots").innerHTML = [...Array(MAX_STRIKES)].map((_,i)=>`<span class="dot ${i<n?"x":""}">${i<n?"✕":""}</span>`).join("");
+  $("strikeMsg").textContent = msg || (n ? `${MAX_STRIKES-n} swing${MAX_STRIKES-n===1?"":"s"} left before you splash.` : "Up to 3 swings to find a name on this leaderboard.");
+}
+function whiff(){
+  const club = $("club"); if (!club) return;
+  try { club.animate([{transform:"rotate(0deg)"},{transform:"rotate(-110deg)"},{transform:"rotate(40deg)"},{transform:"rotate(0deg)"}],{duration:700,easing:"ease-in-out"}); } catch(e){}
+  const svg=$("hole"), g=geo; const tx = el("text",{x:g.tee.x+18,y:g.tee.y-30,"font-family":"Bowlby One SC","font-size":16,fill:"#fff",stroke:"#16241b","stroke-width":.8},svg); tx.textContent="WHIFF!";
+  const st=performance.now(); (function f(ts){const k=Math.min(1,(ts-st)/900); tx.setAttribute("y",g.tee.y-30-20*k); tx.setAttribute("opacity",1-k); if(k<1)requestAnimationFrame(f); else tx.remove();})(st);
+}
+async function playShot(row, opts){
+  busy = true; $("guess").disabled = true; $("swingBtn").disabled = true; $("giveUpBtn").disabled = true;
+  const hole = ROUND[current];
+  const res = scoreShot(hole, row);
+  const strikes = (state.pending && state.pending.strikes) || [];
+  const shot = {guess: opts.guess || "", matched: row, ob: !!res.ob, dist: res.dist, strokes: res.strokes,
+    spots: row ? res.dist : SPLASH_SPOTS, strikes: strikes.slice(), gaveUp: !!opts.gaveUp,
+    quip: opts.gaveUp && !row ? "Gave up and dropped one in the pond. +3." : pick(QUIPS[res.hio ? "hio" : res.ob ? "water" : res.t])};
+  state.shots[current] = shot; state.pending = null; store.set(KEY, state);
+  drawStrikes(""); 
+  await animateShot(res);
+  const box = $("result"); box.innerHTML = revealHTML(hole, shot) + `<div class="next"><button class="btn gold" id="nextBtn">${current===HOLES-1?"Finish round 🏆":"Next hole →"}</button></div>`;
+  box.className = "result show";
+  $("strokeBadge").textContent = `${COURSE_NAME} · ${toPar(total())}`;
+  drawScorecard("scTable"); drawStrip();
+  $("nextBtn").focus();
+  $("nextBtn").onclick = () => { busy = false; if (current === HOLES-1) finish(); else showHole(current+1, true); };
+}
+$("swingForm").addEventListener("submit", ev => {
+  ev.preventDefault(); if (busy) return;
+  const guess = $("guess").value.trim();
+  if (!guess) { $("qcard").classList.add("shake"); setTimeout(()=>$("qcard").classList.remove("shake"),400); return; }
+  const hole = ROUND[current];
+  const row = matchGuess(guess, hole.cat, hole.rank);
+  if (row) return playShot(row, {guess});
+  state.pending = state.pending && state.pending.hole === current ? state.pending : {hole: current, strikes: []};
+  state.pending.strikes.push(guess); store.set(KEY, state);
+  const n = state.pending.strikes.length;
+  if (n >= MAX_STRIKES) return playShot(null, {guess});
+  whiff(); $("qcard").classList.add("shake"); setTimeout(()=>$("qcard").classList.remove("shake"),400);
+  drawStrikes(`Strike ${n}: "${guess}" isn't on this leaderboard. ${MAX_STRIKES-n} swing${MAX_STRIKES-n===1?"":"s"} left.`);
+  $("guess").value = ""; $("guess").focus();
+});
+$("giveUpBtn").onclick = () => { if (!busy) playShot(null, {gaveUp: true}); };
+function screen(id){ ["sIntro","sPlay","sFinal"].forEach(s=>$(s).classList.toggle("on", s===id)); scrollTo({top:0,behavior:"smooth"}); }
+
+// ---------- finish / share ----------
+function shareText(){
+  const lines = state.shots.map((s,i)=>`${i+1}. ${ROUND[i].cat.sport} #${ROUND[i].rank}: ${callFor(s).t.replace("!","")} (${toPar(s.strokes)})`);
+  return `⛳ Sports Golf · Course #${DAY+1} · ${COURSE_NAME}\n${NAME ? NAME + ": " : ""}${toPar(total())} · ${spotsOff()} spots off · ${strikeCount()} strike${strikeCount()===1?"":"s"}  (${mixLabel(MIX)})\n${state.shots.map(s=>callFor(s).e).join("")}\n` + lines.join("\n");
+}
+function verdict(t){ if (t<=-15) return "Tour card material"; if (t<=-6) return "Green jacket stuff"; if (t<0) return "Under par. Nice round."; if (t<=4) return "Solid club champion"; if (t<=12) return "Weekend hacker"; return "Bring more balls"; }
+function finish(){
+  screen("sFinal");
+  const t = total();
+  $("finalTotal").textContent = toPar(t);
+  $("finalSub").textContent = `${NAME ? NAME + " · " : ""}Course #${DAY+1} · ${COURSE_NAME}`;
+  $("finalVerdict").textContent = `${verdict(t)} · ${spotsOff()} spots off · ${strikeCount()} strike${strikeCount()===1?"":"s"}`;
+  $("shareText").textContent = shareText();
+  drawScorecard("scTable2");
+  if (innerWidth < 820) $("finalGrid").style.gridTemplateColumns = "1fr";
+  postScore();
+  renderLB();
+}
+$("copyBtn").onclick = async () => {
+  try { await navigator.clipboard.writeText(shareText()); toast("Copied. Paste it in the group chat."); }
+  catch(e){ const r=document.createRange(); r.selectNodeContents($("shareText")); const s=getSelection(); s.removeAllRanges(); s.addRange(r); toast("Selected. Press Ctrl/⌘+C to copy."); }
+};
+$("reviewBtn").onclick = () => {
+  const box = $("reviewList"); const show = box.style.display === "none"; box.style.display = show ? "block" : "none";
+  if (show) box.innerHTML = ROUND.map((h,i)=> state.shots[i] ? `<div style="padding:12px 0;border-bottom:2px dashed var(--line)"><div style="font-family:'Barlow Condensed';font-weight:700;color:var(--muted)">HOLE ${i+1} · ${h.cat.sport}: ranked ${ord(h.rank)} ${escapeHtml(h.cat.q)}</div>${revealHTML(h, state.shots[i])}</div>` : "").join("");
+};
+
+// ---------- leaderboard (Supabase) ----------
+// Paste your Supabase project URL and anon public key here (both are safe to publish).
+const SUPABASE_URL = "__SUPABASE_URL__";
+const SUPABASE_ANON_KEY = "__SUPABASE_ANON_KEY__";
+const LB_ON = /^https:\/\//.test(SUPABASE_URL) && SUPABASE_ANON_KEY.length > 20;
+const HDR = {apikey: SUPABASE_ANON_KEY, Authorization: "Bearer " + SUPABASE_ANON_KEY, "Content-Type": "application/json"};
+let myId = store.get("sportsgolf:pid");
+if (!myId) { myId = (crypto.randomUUID ? crypto.randomUUID() : "p-" + Date.now() + "-" + Math.random().toString(36).slice(2)); store.set("sportsgolf:pid", myId); }
+let lbRows = [], lbStatus = LB_ON ? "loading" : null, myEntry = null, lbTimer = null;
+async function fetchLB(){
+  if (!LB_ON) { renderLB(); return; }
+  try {
+    const q = `day=eq.${TODAY}&mix=eq.${encodeURIComponent(MIX)}`;
+    const sel = "select=player_id,name,total,spots,strikes,created_at&order=total.asc,spots.asc,strikes.asc,created_at.asc";
+    const [top, mine] = await Promise.all([
+      fetch(`${SUPABASE_URL}/rest/v1/scores?${q}&${sel}&limit=100`, {headers: HDR}).then(r => r.ok ? r.json() : Promise.reject(r.status)),
+      fetch(`${SUPABASE_URL}/rest/v1/scores?${q}&player_id=eq.${myId}&select=name,total,spots,strikes,created_at`, {headers: HDR}).then(r => r.ok ? r.json() : []),
+    ]);
+    lbRows = top; myEntry = mine[0] || null; lbStatus = "ok";
+    if (myEntry && !lbRows.some(r => r.player_id === myId)) {
+      const better = await fetch(`${SUPABASE_URL}/rest/v1/scores?${q}&or=(total.lt.${myEntry.total},and(total.eq.${myEntry.total},spots.lt.${myEntry.spots}))&select=player_id`, {headers: {...HDR, Prefer: "count=exact", Range: "0-0"}});
+      const cr = better.headers.get("content-range"); myEntry.rank = cr ? (+cr.split("/")[1] + 1) : null;
+    }
+  } catch(e) { lbStatus = "err"; }
+  renderLB(); refreshIntro();
+}
+function myServerEntry(){ return myEntry; }
+function renderLB(){
+  const lists = [$("lbIntro"), $("lbFinal")];
+  $("lbMixIntro").textContent = $("lbMixFinal").textContent = `Course #${DAY+1} · ${mixLabel(MIX)}`;
+  const msg = m => lists.forEach(l => l.innerHTML = `<li class="empty">${m}</li>`);
+  if (lbStatus === null) return msg("Leaderboard not set up yet. Your copied result still works anywhere.");
+  if (lbStatus === "err") return msg("Leaderboard unavailable right now. Try again in a minute.");
+  if (lbStatus === "loading") return msg("Loading…");
+  if (!lbRows.length) return msg("No scores posted for this mix yet today. Be the first off the tee.");
+  const same = (a,b) => a && b && a.total===b.total && a.spots===b.spots && a.strikes===b.strikes;
+  let rows = lbRows.map((r,i) => ({...r, pos: i+1}));
+  rows.forEach((r,i) => { if (i && same(r, rows[i-1])) r.pos = rows[i-1].pos; });
+  const li = r => `<li class="${r.player_id===myId?"me":""}"><span class="pos">${r.tie?"T":""}${r.pos ?? "–"}</span><span class="nm"></span><span class="sc">${toPar(r.total)} <small style="font-weight:600;color:var(--muted);font-size:13px">· ${r.spots} off</small></span></li>`;
+  rows.forEach((r,i) => r.tie = rows.some((o,j) => j!==i && o.pos===r.pos));
+  let view = rows.slice(0, 25);
+  if (myEntry && !view.some(r => r.player_id === myId)) { const me = rows.find(r => r.player_id===myId) || {...myEntry, player_id:myId, pos: myEntry.rank}; view = view.concat([me]); }
+  lists.forEach(l => {
+    l.innerHTML = view.map(li).join("") + (lbRows.length > 25 ? `<li class="empty">${lbRows.length >= 100 ? "100+" : lbRows.length} golfers today</li>` : "");
+    [...l.querySelectorAll(".nm")].forEach((n,i) => { const r = view[i]; n.textContent = (r.name || "Golfer") + (r.player_id===myId ? " (you)" : ""); });
+  });
+}
+let posting = false;
+async function postScore(){
+  if (!LB_ON) { $("postNote").textContent = "Score saved on this device."; return; }
+  if (posting) return; posting = true;
+  try {
+    const body = {day: TODAY, mix: MIX, player_id: myId, name: (NAME || "Golfer").slice(0,20), total: total(), spots: spotsOff(), strikes: strikeCount(), holes: state.shots.map(s=>s.strokes)};
+    const r = await fetch(`${SUPABASE_URL}/rest/v1/scores`, {method: "POST", headers: {...HDR, Prefer: "return=minimal"}, body: JSON.stringify(body)});
+    $("postNote").textContent = r.ok ? "Posted to today's leaderboard." : r.status === 409 ? "Your first round on this course is already on the leaderboard." : "Couldn't post your score right now.";
+  } catch(e) { $("postNote").textContent = "Couldn't post your score right now."; }
+  finally { posting = false; fetchLB(); }
+}
+function initShared(){ fetchLB(); clearInterval(lbTimer); lbTimer = setInterval(() => { if (!document.hidden) fetchLB(); }, 60000); }
+// ---------- intro / boot ----------
+function renderChips(){
+  $("sportChips").innerHTML = ALL_SPORTS.map(s=>`<button type="button" class="c-${s} ${SPORTS.includes(s)?"on":""}" data-s="${s}" aria-pressed="${SPORTS.includes(s)}">${s}</button>`).join("");
+  [...$("sportChips").children].forEach(b => b.onclick = () => {
+    const s = b.dataset.s; const next = SPORTS.includes(s) ? SPORTS.filter(x=>x!==s) : [...SPORTS, s];
+    const lists = CATEGORIES.filter(c => next.includes(c.sport)).length;
+    if (lists < 3) { $("introErr").textContent = `That mix only has ${lists} stat leaderboard${lists===1?"":"s"} so far. Add another sport (a round needs at least 3).`; return; }
+    $("introErr").textContent = "";
+    SPORTS = ALL_SPORTS.filter(x => next.includes(x)); store.set("sportsgolf:sports", SPORTS);
+    loadMix(); renderChips(); refreshIntro(); lbStatus = LB_ON ? "loading" : null; myEntry = null; renderLB(); fetchLB();
+  });
+  const few = new Set(CATEGORIES.filter(c=>SPORTS.includes(c.sport)).map(c=>c.id)).size;
+  $("mixHint").textContent = `${mixLabel(MIX)} · ${few} stat leaderboard${few===1?"":"s"}. Everyone who picks the same sports gets the same course today.` + (few < 8 ? " Fewer sports means questions come back around sooner." : "");
+}
+function refreshIntro(){
+  const done = state.shots.length >= HOLES, posted = myServerEntry();
+  $("courseName").textContent = COURSE_NAME;
+  $("introTitle").textContent = `Course #${DAY+1}: ${new Date(TODAY+"T12:00:00").toLocaleDateString("en-US",{weekday:"long",month:"short",day:"numeric"})}`;
+  $("teeBtn").disabled = false; $("viewFinal").style.display = "none";
+  if (done) { $("teeBtn").textContent = "Round complete ✔"; $("teeBtn").disabled = true; $("viewFinal").style.display = ""; }
+  else if (posted) { $("teeBtn").textContent = `Already posted ${toPar(posted.total)} today`; $("teeBtn").disabled = true; }
+  else if (state.shots.length) $("teeBtn").textContent = `Resume at hole ${state.shots.length+1} ⛳`;
+  else $("teeBtn").textContent = "Tee off ⛳";
+}
+$("nameIn").value = NAME;
+$("nameIn").addEventListener("input", () => { NAME = $("nameIn").value.trim().slice(0,20); store.set("sportsgolf:name", NAME); if (NAME) $("introErr").textContent = ""; });
+$("teeBtn").onclick = () => {
+  if (!NAME) { $("introErr").textContent = "Enter your name so the leaderboard knows who teed off."; $("nameIn").focus(); return; }
+  screen("sPlay"); showHole(state.shots.length, false);
+};
+$("viewFinal").onclick = finish;
+const canReset = new URLSearchParams(location.search).has("reset");
+["resetBtn","resetBtn2"].forEach(id => $(id).style.display = canReset ? "" : "none");
+function resetRound(){
+  try { localStorage.removeItem(KEY); } catch(e){}
+  state = {shots: []}; current = 0; busy = false; $("reviewList").style.display = "none";
+  screen("sIntro"); refreshIntro(); toast("Round reset on this device. The leaderboard keeps your first posted score.");
+}
+$("resetBtn").onclick = resetRound; $("resetBtn2").onclick = resetRound;
+loadMix();
+$("courseBadge").textContent = `Course #${DAY+1}`;
+$("foot").innerHTML = `Today's course: ${COURSE_NAME}. A new course drops at midnight Eastern. Rankings are a snapshot taken Nov 17, 2026 from Basketball, Hockey, Baseball &amp; Sports Reference, footballdb, drafthistory.com and Wikipedia. Career totals for active players keep moving, but the game uses the snapshot.`;
+renderChips(); refreshIntro(); renderLB();
+initShared();
+})();
+</script>
+</body>
+</html>
