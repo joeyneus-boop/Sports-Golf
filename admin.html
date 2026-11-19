@@ -77,7 +77,9 @@ const store = { get(k){ try { return localStorage.getItem(k); } catch(e){ return
 const today = new Intl.DateTimeFormat("en-CA",{timeZone:"America/New_York"}).format(new Date());
 const toPar = n => n===0 ? "E" : (n>0?"+":"")+n;
 const esc = s => String(s).replace(/[&<>"']/g,c=>({"&":"&amp;","<":"&lt;",">":"&gt;",'"':"&quot;","'":"&#39;"}[c]));
-const mixLabel = m => m === "NFL-CFB-NBA-CBB-NHL-MLB" ? "All sports" : m.split("-").join(" + ");
+const ALL_SPORTS = ["NFL","CFB","NBA","CBB","NHL","MLB"];
+const mixLabel = m => { const has = m.split("-"), miss = ALL_SPORTS.filter(s => !has.includes(s));
+  return !miss.length ? "All sports" : miss.length <= 2 ? "No " + miss.join(" or ") : has.join(" + "); };
 $("day").value = today;
 const saved = store.get("sportsgolf:adminKey");
 if (saved) { $("key").value = saved; $("remember").checked = true; }
