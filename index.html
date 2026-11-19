@@ -748,10 +748,10 @@ $("reviewBtn").onclick = () => {
 
 // ---------- leaderboard (Supabase) ----------
 // Paste your Supabase project URL and anon public key here (both are safe to publish).
-const SUPABASE_URL = "__SUPABASE_URL__";
-const SUPABASE_ANON_KEY = "__SUPABASE_ANON_KEY__";
+const SUPABASE_URL = "https://sbrwthbyyajscvkwsonx.supabase.co";
+const SUPABASE_ANON_KEY = "sb_publishable_DnysnBjYOfhYQuMz2uejww_H9ksCWDr";
 const LB_ON = /^https:\/\//.test(SUPABASE_URL) && SUPABASE_ANON_KEY.length > 20;
-const HDR = {apikey: SUPABASE_ANON_KEY, Authorization: "Bearer " + SUPABASE_ANON_KEY, "Content-Type": "application/json"};
+const HDR = {apikey: SUPABASE_ANON_KEY, "Content-Type": "application/json"};
 let myId = store.get("sportsgolf:pid");
 if (!myId) { myId = (crypto.randomUUID ? crypto.randomUUID() : "p-" + Date.now() + "-" + Math.random().toString(36).slice(2)); store.set("sportsgolf:pid", myId); }
 let lbRows = [], lbStatus = LB_ON ? "loading" : null, myEntry = null, lbTimer = null;

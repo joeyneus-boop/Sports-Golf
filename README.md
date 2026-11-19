@@ -22,7 +22,7 @@ A name that isn't on the leaderboard is a strike. Three strikes (or Give up) is 
 ## Leaderboard setup (Supabase)
 1. Create a free project at supabase.com.
 2. SQL Editor → paste `supabase/schema.sql` → Run.
-3. Project Settings → API: copy the Project URL and the `anon` public key into `SUPABASE_URL` and `SUPABASE_ANON_KEY` near the leaderboard section of `index.html`.
+3. Project Settings → API Keys: copy the Project URL and the publishable key into `SUPABASE_URL` and `SUPABASE_ANON_KEY` near the leaderboard section of `index.html`. (Already done for the live site.)
 
 To hide an offensive name, open the `scores` table in the Supabase dashboard and set `hidden` to true on that row.
 

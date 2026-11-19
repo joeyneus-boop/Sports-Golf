@@ -44,3 +44,7 @@ create policy "read board" on public.scores for select to anon using (not hidden
 drop policy if exists "post score" on public.scores;
 create policy "post score" on public.scores for insert to anon with check (true);
 revoke update, delete on public.scores from anon, authenticated;
+
+-- New Supabase projects don't expose new tables to the API automatically.
+grant usage on schema public to anon;
+grant select, insert on public.scores to anon;
