@@ -78,7 +78,7 @@ const today = new Intl.DateTimeFormat("en-CA",{timeZone:"America/New_York"}).for
 const toPar = n => n===0 ? "E" : (n>0?"+":"")+n;
 const esc = s => String(s).replace(/[&<>"']/g,c=>({"&":"&amp;","<":"&lt;",">":"&gt;",'"':"&quot;","'":"&#39;"}[c]));
 const ALL_SPORTS = ["NFL","CFB","NBA","CBB","NHL","MLB"];
-const mixLabel = m => { const has = m.split("-"), miss = ALL_SPORTS.filter(s => !has.includes(s));
+const mixLabel = (m, day) => { const has = m.split("-"), base = (String(day||"") >= "2026-11-20" && !has.includes("NHL")) ? ALL_SPORTS.filter(s => s !== "NHL") : ALL_SPORTS, miss = base.filter(s => !has.includes(s));
   return !miss.length ? "All sports" : miss.length <= 2 ? "No " + miss.join(" or ") : has.join(" + "); };
 $("day").value = today;
 const saved = store.get("sportsgolf:adminKey");
@@ -103,7 +103,7 @@ async function load(){
 function render(){
   if (!rows.length) { $("results").innerHTML = `<div class="card"><p class="empty">No scores for this day.</p></div>`; return; }
   const byMix = {}; rows.forEach(r => (byMix[r.mix] = byMix[r.mix] || []).push(r));
-  $("results").innerHTML = Object.entries(byMix).map(([mix, list]) => `<div class="card"><h2>${esc(mixLabel(mix))}</h2><table>
+  $("results").innerHTML = Object.entries(byMix).map(([mix, list]) => `<div class="card"><h2>${esc(mixLabel(mix, list[0] && list[0].day))}</h2><table>
     <tr><th>Name</th><th>Score</th><th>Off</th><th>Strikes</th><th>Posted</th><th></th></tr>
     ${list.map(r => `<tr class="${r.hidden?"hidden":""}"><td class="nm">${esc(r.name)} ${r.hidden?'<span class="pill h">hidden</span>':""}</td><td>${toPar(r.total)}</td><td>${r.spots}</td><td>${r.strikes}</td>
       <td>${new Date(r.created_at).toLocaleTimeString("en-US",{hour:"numeric",minute:"2-digit"})}</td>
@@ -114,7 +114,7 @@ function render(){
 let pendingDelete = null;
 async function act(kind, id, btn){
   const r = rows.find(x => x.id === id); if (!r) return;
-  if (kind === "del") { pendingDelete = r; $("confirmText").textContent = `"${r.name}" · ${toPar(r.total)} on ${r.day} (${mixLabel(r.mix)})`; $("confirm").classList.add("on"); return; }
+  if (kind === "del") { pendingDelete = r; $("confirmText").textContent = `"${r.name}" · ${toPar(r.total)} on ${r.day} (${mixLabel(r.mix, r.day)})`; $("confirm").classList.add("on"); return; }
   btn.disabled = true;
   try { await rpc("admin_set_hidden", {p_id: id, p_hidden: kind === "hide"}); r.hidden = kind === "hide"; say(`${r.hidden ? "Hid" : "Restored"} "${r.name}".`, "ok"); render(); }
   catch(e){ say("Couldn't update: " + e.message, "err"); btn.disabled = false; }
