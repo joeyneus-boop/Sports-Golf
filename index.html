@@ -911,9 +911,13 @@ function buildUnlimited(sports, seed){
   for (let i = cats.length-1; i>0; i--) { const j=Math.floor(rnd()*(i+1)); [cats[i],cats[j]]=[cats[j],cats[i]]; }
   const recent = new Set(store.get("sportsgolf:unlRecent") || []);
   const counts = {}; cats.forEach(c => { const m={}; c.rows.forEach(r=>m[r[2]]=(m[r[2]]||0)+1); counts[c.id]=m; });
+  // balance by sport: deal holes round-robin across the chosen sports, then pick a list within that sport
+  const bySport = {}; cats.forEach(c => (bySport[c.sport] = bySport[c.sport] || []).push(c));
+  const sp = Object.keys(bySport); for (let i = sp.length-1; i>0; i--) { const j=Math.floor(rnd()*(i+1)); [sp[i],sp[j]]=[sp[j],sp[i]]; }
+  const nextIdx = {}; sp.forEach(s => nextIdx[s] = 0);
   const chosen = [];
-  for (let i = 0; chosen.length < HOLES && i < HOLES*4; i++) {
-    const c = cats[i % cats.length];
+  for (let i = 0; chosen.length < HOLES && i < HOLES*6; i++) {
+    const s0 = sp[i % sp.length], c = bySport[s0][nextIdx[s0]++ % bySport[s0].length];
     const ok = (rk, strict) => rk <= c.maxTarget && counts[c.id][rk] === 1 && (!strict || !recent.has(c.id+":"+rk)) &&
       !chosen.some(h => h.cat.id === c.id && Math.abs(h.rank - rk) < 10) && !chosen.some(h => h.target && h.target[0] === c.rows.find(r=>r[2]===rk)[0]);
     let pool = c.rows.map(r=>r[2]).filter(rk => ok(rk, true));
