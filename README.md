@@ -2,7 +2,7 @@
 
 A daily sports-stats trivia game. Each of the nine holes asks for the player at a specific rank on a stat leaderboard (NFL, college football, NBA, college basketball, NHL, MLB). The closer you are, the better your golf score.
 
-**Play:** https://joeyneus-boop.github.io/Sports-Golf/
+**Play:** https://playsportsgolf.com
 
 ## Scoring
 | Spots off | Result | Score |
