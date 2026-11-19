@@ -2,7 +2,7 @@
 
 A daily sports-stats trivia game. Each of the nine holes asks for the player at a specific rank on a stat leaderboard (NFL, college football, NBA, college basketball, NHL, MLB). The closer you are, the better your golf score.
 
-**Play:** https://joeyneus-boop.github.io/sports-golf/
+**Play:** https://joeyneus-boop.github.io/Sports-Golf/
 
 ## Scoring
 | Spots off | Result | Score |
@@ -14,6 +14,8 @@ A daily sports-stats trivia game. Each of the nine holes asks for the player at 
 | 21–30 | Bogey | +1 |
 | 31–40 | Double bogey | +2 |
 | 41+ | Triple bogey | +3 |
+
+**Unlimited mode:** play random courses as many times as you want; those rounds don't count toward the daily leaderboard.
 
 A name that isn't on the leaderboard is a strike. Three strikes (or Give up) is a splash for +3. Ties break on total spots off (a splash counts as 100), then fewest strikes, then who posted first.
 

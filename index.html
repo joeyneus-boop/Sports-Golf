@@ -150,8 +150,10 @@ header.top{display:flex;align-items:center;justify-content:space-between;gap:12p
         <p class="hint" id="mixHint">Everyone who picks the same sports gets the same course today.</p>
         <p class="hint">There's no list of names to pick from, and the game never tells you who's on a list. Type the full name; small typos are forgiven.</p>
         <div class="err" id="introErr"></div>
+        <p class="hint" style="margin-top:-2px"><b>Unlimited</b> plays random courses, as many as you want. Those rounds don't count toward the daily leaderboard.</p>
         <div style="display:flex;gap:10px;flex-wrap:wrap;margin-top:14px">
           <button class="btn gold" id="teeBtn">Tee off ⛳</button>
+          <button class="btn" id="unlBtn">Unlimited ♾️</button>
           <button class="btn ghost" id="viewFinal" style="display:none">See my scorecard</button>
           <button class="btn ghost" id="resetBtn" style="display:none">↺ Reset my round</button>
         </div>
@@ -200,13 +202,15 @@ header.top{display:flex;align-items:center;justify-content:space-between;gap:12p
         <div class="sharebox" id="shareText"></div>
         <div style="display:flex;gap:10px;flex-wrap:wrap">
           <button class="btn gold" id="copyBtn">Copy result</button>
+          <button class="btn" id="playAgainBtn" style="display:none">Play again ♾️</button>
           <button class="btn ghost" id="reviewBtn">Review holes</button>
+          <button class="btn ghost" id="dailyBtn" style="display:none">← Daily round</button>
           <button class="btn ghost" id="resetBtn2" style="display:none">↺ Reset my round</button>
         </div>
         <p class="hint" id="postNote"></p>
       </div>
       <div class="lb" style="padding:0">
-        <h3>Today's leaderboard</h3>
+        <h3 id="lbTitleFinal">Today's leaderboard</h3>
         <p class="hint" id="lbMixFinal" style="margin:-4px 0 8px"></p>
         <ol id="lbFinal"><li class="empty">Loading…</li></ol>
       </div>
@@ -287,8 +291,8 @@ const THEMES = [
   {id:"alpine", names:["Glacier Peak","Timberline","Snowcap","Eagle Pass"], suffix:"Mountain Course",
    rough:"#e9eef2", speck:"#d7e0e6", fw1:"#4c8e57", fw2:"#55985f", edge:"#9fb4bf", green1:"#8fd68a", green2:"#5bae5f", sand:"#ece3c8", sandE:"#c9bb8e", tree:"pine", treeC:["#1d4d35","#2b6a48"], label:"#33505e"},
 ];
-const THEME = THEMES[hashStr("theme:"+DAY) % THEMES.length];
-const COURSE_NAME = THEME.names[hashStr("name:"+DAY) % THEME.names.length] + " " + THEME.suffix;
+let THEME = THEMES[hashStr("theme:"+DAY) % THEMES.length];
+let COURSE_NAME = THEME.names[hashStr("name:"+DAY) % THEME.names.length] + " " + THEME.suffix;
 
 // ---------- daily schedule (deterministic per sports mix, no repeats) ----------
 function buildSchedule(uptoDay, sports){
@@ -714,21 +718,25 @@ function screen(id){ ["sIntro","sPlay","sFinal"].forEach(s=>$(s).classList.toggl
 // ---------- finish / share ----------
 function shareText(){
   const lines = state.shots.map((s,i)=>`${i+1}. ${ROUND[i].cat.sport} #${ROUND[i].rank}: ${callFor(s).t.replace("!","")} (${toPar(s.strokes)})`);
-  return `⛳ Sports Golf · Course #${DAY+1} · ${COURSE_NAME}\n${NAME ? NAME + ": " : ""}${toPar(total())} · ${spotsOff()} spots off · ${strikeCount()} strike${strikeCount()===1?"":"s"}  (${mixLabel(MIX)})\n${state.shots.map(s=>callFor(s).e).join("")}\n` + lines.join("\n");
+  return `⛳ Sports Golf · ${MODE==="unl" ? "Unlimited" : "Course #"+(DAY+1)} · ${COURSE_NAME}\n${NAME ? NAME + ": " : ""}${toPar(total())} · ${spotsOff()} spots off · ${strikeCount()} strike${strikeCount()===1?"":"s"}  (${mixLabel(MIX)})\n${state.shots.map(s=>callFor(s).e).join("")}\n` + lines.join("\n");
 }
 function verdict(t){ if (t<=-15) return "Tour card material"; if (t<=-6) return "Green jacket stuff"; if (t<0) return "Under par. Nice round."; if (t<=4) return "Solid club champion"; if (t<=12) return "Weekend hacker"; return "Bring more balls"; }
 function finish(){
   screen("sFinal");
   const t = total();
   $("finalTotal").textContent = toPar(t);
-  $("finalSub").textContent = `${NAME ? NAME + " · " : ""}Course #${DAY+1} · ${COURSE_NAME}`;
+  $("finalSub").textContent = `${NAME ? NAME + " · " : ""}${MODE==="unl" ? "Unlimited" : "Course #"+(DAY+1)} · ${COURSE_NAME}`;
   $("finalVerdict").textContent = `${verdict(t)} · ${spotsOff()} spots off · ${strikeCount()} strike${strikeCount()===1?"":"s"}`;
   $("shareText").textContent = shareText();
   drawScorecard("scTable2");
   if (innerWidth < 820) $("finalGrid").style.gridTemplateColumns = "1fr";
+  $("playAgainBtn").style.display = $("dailyBtn").style.display = MODE === "unl" ? "" : "none";
+  if (MODE === "unl") { $("postNote").textContent = ""; $("resetBtn2").style.display = "none"; renderUnlPanel(); return; }
   postScore();
   renderLB();
 }
+$("playAgainBtn").onclick = () => startUnlimited(true);
+$("dailyBtn").onclick = backToDaily;
 $("copyBtn").onclick = async () => {
   try { await navigator.clipboard.writeText(shareText()); toast("Copied. Paste it in the group chat."); }
   catch(e){ const r=document.createRange(); r.selectNodeContents($("shareText")); const s=getSelection(); s.removeAllRanges(); s.addRange(r); toast("Selected. Press Ctrl/⌘+C to copy."); }
@@ -766,8 +774,8 @@ async function fetchLB(){
 }
 function myServerEntry(){ return myEntry; }
 function renderLB(){
-  const lists = [$("lbIntro"), $("lbFinal")];
-  $("lbMixIntro").textContent = $("lbMixFinal").textContent = `Course #${DAY+1} · ${mixLabel(MIX)}`;
+  const lists = MODE === "unl" ? [$("lbIntro")] : [$("lbIntro"), $("lbFinal")];
+  $("lbMixIntro").textContent = `Course #${DAY+1} · ${mixLabel(MIX)}`; if (MODE !== "unl") { $("lbMixFinal").textContent = `Course #${DAY+1} · ${mixLabel(MIX)}`; $("lbTitleFinal").textContent = "Today's leaderboard"; }
   const msg = m => lists.forEach(l => l.innerHTML = `<li class="empty">${m}</li>`);
   if (lbStatus === null) return msg("Leaderboard not set up yet. Your copied result still works anywhere.");
   if (lbStatus === "err") return msg("Leaderboard unavailable right now. Try again in a minute.");
@@ -797,6 +805,70 @@ async function postScore(){
   finally { posting = false; fetchLB(); }
 }
 function initShared(){ fetchLB(); clearInterval(lbTimer); lbTimer = setInterval(() => { if (!document.hidden) fetchLB(); }, 60000); }
+
+// ---------- unlimited mode ----------
+let MODE = "daily";
+const DAILY_THEME = THEME, DAILY_NAME = COURSE_NAME;
+function buildUnlimited(sports, seed){
+  const rnd = mulberry32(seed);
+  const cats = CATEGORIES.filter(c => sports.includes(c.sport));
+  for (let i = cats.length-1; i>0; i--) { const j=Math.floor(rnd()*(i+1)); [cats[i],cats[j]]=[cats[j],cats[i]]; }
+  const recent = new Set(store.get("sportsgolf:unlRecent") || []);
+  const counts = {}; cats.forEach(c => { const m={}; c.rows.forEach(r=>m[r[2]]=(m[r[2]]||0)+1); counts[c.id]=m; });
+  const chosen = [];
+  for (let i = 0; chosen.length < HOLES && i < HOLES*4; i++) {
+    const c = cats[i % cats.length];
+    const ok = (rk, strict) => rk <= c.maxTarget && counts[c.id][rk] === 1 && (!strict || !recent.has(c.id+":"+rk)) &&
+      !chosen.some(h => h.cat.id === c.id && Math.abs(h.rank - rk) < 10) && !chosen.some(h => h.target && h.target[0] === c.rows.find(r=>r[2]===rk)[0]);
+    let pool = c.rows.map(r=>r[2]).filter(rk => ok(rk, true));
+    if (!pool.length) pool = c.rows.map(r=>r[2]).filter(rk => ok(rk, false));
+    if (!pool.length) continue;
+    const b = rnd(); const lo = b < .3 ? 1 : b < .7 ? 26 : 71, hi = b < .3 ? 25 : b < .7 ? 70 : 999;
+    let sub = pool.filter(r => r >= lo && r <= hi); if (!sub.length) sub = pool;
+    const rank = sub[Math.floor(rnd()*sub.length)];
+    chosen.push({cat:c, rank, target: c.rows.find(r=>r[2]===rank), layout: hashStr("unl:"+seed+":"+c.id+":"+rank)});
+  }
+  for (let i = chosen.length-1; i>0; i--) { const j=Math.floor(rnd()*(i+1)); [chosen[i],chosen[j]]=[chosen[j],chosen[i]]; }
+  return chosen;
+}
+function setTheme(seed){
+  if (seed == null) { THEME = DAILY_THEME; COURSE_NAME = DAILY_NAME; }
+  else { THEME = THEMES[seed % THEMES.length]; COURSE_NAME = THEME.names[(seed >>> 3) % THEME.names.length] + " " + THEME.suffix; }
+}
+function startUnlimited(fresh){
+  MODE = "unl"; MIX = mixKey(SPORTS);
+  KEY = "sportsgolf:unl:" + MIX;
+  let s = store.get(KEY);
+  if (fresh || !s || !s.seed || (s.shots||[]).length >= HOLES) s = {seed: (Date.now() ^ Math.floor(Math.random()*1e9)) >>> 0, shots: []};
+  state = s; store.set(KEY, state);
+  setTheme(state.seed);
+  ROUND = buildUnlimited(SPORTS, state.seed);
+  if (!state.shots.length) { const rec = (store.get("sportsgolf:unlRecent") || []).concat(ROUND.map(h=>h.cat.id+":"+h.rank)).slice(-200); store.set("sportsgolf:unlRecent", rec); }
+  current = Math.min(state.shots.length, HOLES-1); busy = false;
+  $("courseBadge").textContent = "Unlimited ♾️";
+  $("reviewList").style.display = "none";
+  screen("sPlay"); showHole(state.shots.length, false);
+}
+function backToDaily(){
+  MODE = "daily"; setTheme(null); busy = false; loadMix();
+  $("courseBadge").textContent = `Course #${DAY+1}`;
+  $("reviewList").style.display = "none";
+  screen("sIntro"); refreshIntro(); renderLB();
+}
+function unlStats(){ return store.get("sportsgolf:unlStats") || {rounds:0, best:null, sum:0, hio:0, lastSeed:null}; }
+function recordUnl(){
+  const st = unlStats(); if (st.lastSeed === state.seed) return st;
+  const t = total(); st.rounds++; st.sum += t; st.best = st.best == null ? t : Math.min(st.best, t);
+  st.hio += state.shots.filter(s=>s.dist===0).length; st.lastSeed = state.seed; store.set("sportsgolf:unlStats", st); return st;
+}
+function renderUnlPanel(){
+  const st = recordUnl();
+  $("lbTitleFinal").textContent = "Your unlimited stats";
+  $("lbMixFinal").textContent = "Unlimited rounds don't count toward the daily leaderboard.";
+  $("lbFinal").innerHTML = [["Rounds played", st.rounds], ["Best round", toPar(st.best)], ["Average", toPar(Math.round(st.sum/st.rounds*10)/10)], ["Holes in one", st.hio]]
+    .map(([k,v]) => `<li><span class="nm">${k}</span><span class="sc">${v}</span></li>`).join("");
+}
+
 // ---------- intro / boot ----------
 function renderChips(){
   $("sportChips").innerHTML = ALL_SPORTS.map(s=>`<button type="button" class="c-${s} ${SPORTS.includes(s)?"on":""}" data-s="${s}" aria-pressed="${SPORTS.includes(s)}">${s}</button>`).join("");
@@ -828,6 +900,10 @@ $("teeBtn").onclick = () => {
   screen("sPlay"); showHole(state.shots.length, false);
 };
 $("viewFinal").onclick = finish;
+$("unlBtn").onclick = () => {
+  if (!NAME) { $("introErr").textContent = "Enter your name first."; $("nameIn").focus(); return; }
+  startUnlimited(false);
+};
 const canReset = new URLSearchParams(location.search).has("reset");
 ["resetBtn","resetBtn2"].forEach(id => $(id).style.display = canReset ? "" : "none");
 function resetRound(){
