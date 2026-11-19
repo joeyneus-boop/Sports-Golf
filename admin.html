@@ -1,0 +1,132 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<meta name="robots" content="noindex, nofollow">
+<title>Sports Golf · Admin</title>
+<link href="https://fonts.googleapis.com/css2?family=Bowlby+One+SC&family=Barlow:wght@400;600;700&display=swap" rel="stylesheet">
+<style>
+:root{--fair:#2f7d44;--fair-d:#1d5530;--cream:#fbf5e6;--ink:#16241b;--line:#d9cfb6;--muted:#5d6f63;--flag:#e23b3b;--gold:#f4b73a}
+*{box-sizing:border-box}
+body{margin:0;font-family:Barlow,system-ui,sans-serif;background:#0f3a22;color:var(--ink)}
+.wrap{max-width:900px;margin:0 auto;padding:20px 14px 40px}
+h1{font-family:'Bowlby One SC';color:var(--cream);margin:0 0 4px;font-size:28px}
+.sub{color:rgba(251,245,230,.75);margin:0 0 16px}
+.sub a{color:var(--gold)}
+.card{background:var(--cream);border-radius:14px;padding:16px;margin-bottom:14px}
+.row{display:flex;gap:10px;flex-wrap:wrap;align-items:end}
+label{display:block;font-weight:700;font-size:13px;color:var(--muted);text-transform:uppercase;letter-spacing:.5px;margin-bottom:4px}
+input{font:600 16px Barlow;padding:9px 10px;border:2px solid var(--line);border-radius:9px;background:#fff}
+input:focus{outline:none;border-color:var(--fair)}
+button{font:700 15px Barlow;border:0;border-radius:9px;padding:9px 14px;cursor:pointer;background:var(--fair);color:#fff}
+button.ghost{background:transparent;color:var(--fair-d);border:2px solid var(--fair)}
+button.warn{background:var(--gold);color:var(--ink)}
+button.del{background:var(--flag)}
+button:disabled{opacity:.5;cursor:default}
+.msg{min-height:20px;margin-top:8px;font-weight:600}
+.msg.err{color:var(--flag)} .msg.ok{color:var(--fair)}
+h2{font-family:'Bowlby One SC';font-size:18px;color:var(--fair-d);margin:0 0 8px}
+table{width:100%;border-collapse:collapse;font-size:15px}
+th,td{padding:7px 6px;border-bottom:1px dashed var(--line);text-align:left;vertical-align:middle}
+th{font-size:12px;text-transform:uppercase;color:var(--muted);letter-spacing:.5px}
+tr.hidden td{opacity:.5}
+tr.hidden td.nm{text-decoration:line-through}
+td.act{white-space:nowrap;text-align:right}
+td.act button{padding:5px 9px;font-size:13px;margin-left:4px}
+.pill{font-size:11px;font-weight:700;padding:2px 7px;border-radius:999px;background:#ddd}
+.pill.h{background:#fbd5d1;color:#8a1f1f}
+.empty{color:var(--muted);font-style:italic}
+.confirm{display:none;position:fixed;inset:0;background:rgba(0,0,0,.5);align-items:center;justify-content:center;padding:20px}
+.confirm.on{display:flex}
+.confirm .card{max-width:380px}
+</style>
+</head>
+<body>
+<div class="wrap">
+  <h1>⛳ Leaderboard admin</h1>
+  <p class="sub">Hide or delete scores on <a href="/">playsportsgolf.com</a>. Hidden scores disappear from the public leaderboard but can be restored. Deleting is permanent.</p>
+
+  <div class="card">
+    <div class="row">
+      <div><label for="key">Admin key</label><input id="key" type="password" autocomplete="current-password" size="30" placeholder="sg-…"></div>
+      <div><label for="day">Day</label><input id="day" type="date"></div>
+      <button id="load">Load scores</button>
+    </div>
+    <div class="row" style="margin-top:8px"><label style="text-transform:none;font-weight:600;color:var(--ink)"><input type="checkbox" id="remember"> Remember the key on this device</label></div>
+    <div class="msg" id="msg"></div>
+  </div>
+
+  <div id="results"></div>
+</div>
+
+<div class="confirm" id="confirm"><div class="card">
+  <h2>Delete this score?</h2>
+  <p id="confirmText"></p>
+  <p style="color:var(--muted);font-size:14px">This can't be undone. To keep it recoverable, use Hide instead.</p>
+  <div class="row"><button class="del" id="confirmYes">Delete permanently</button><button class="ghost" id="confirmNo">Cancel</button></div>
+</div></div>
+
+<script>
+(() => {
+const SUPABASE_URL = "https://sbrwthbyyajscvkwsonx.supabase.co";
+const SUPABASE_ANON_KEY = "sb_publishable_DnysnBjYOfhYQuMz2uejww_H9ksCWDr";
+const H = {apikey: SUPABASE_ANON_KEY, "Content-Type": "application/json"};
+const $ = id => document.getElementById(id);
+const store = { get(k){ try { return localStorage.getItem(k); } catch(e){ return null; } }, set(k,v){ try { v == null ? localStorage.removeItem(k) : localStorage.setItem(k,v); } catch(e){} } };
+const today = new Intl.DateTimeFormat("en-CA",{timeZone:"America/New_York"}).format(new Date());
+const toPar = n => n===0 ? "E" : (n>0?"+":"")+n;
+const esc = s => String(s).replace(/[&<>"']/g,c=>({"&":"&amp;","<":"&lt;",">":"&gt;",'"':"&quot;","'":"&#39;"}[c]));
+const mixLabel = m => m === "NFL-CFB-NBA-CBB-NHL-MLB" ? "All sports" : m.split("-").join(" + ");
+$("day").value = today;
+const saved = store.get("sportsgolf:adminKey");
+if (saved) { $("key").value = saved; $("remember").checked = true; }
+
+async function rpc(fn, args){
+  const r = await fetch(`${SUPABASE_URL}/rest/v1/rpc/${fn}`, {method:"POST", headers:H, body: JSON.stringify({p_key: $("key").value.trim(), ...args})});
+  const txt = await r.text(); let j = null; try { j = txt ? JSON.parse(txt) : null; } catch(e){}
+  if (!r.ok) throw new Error(j && j.message ? j.message : "request failed (" + r.status + ")");
+  return j;
+}
+function say(t, kind){ $("msg").textContent = t; $("msg").className = "msg " + (kind||""); }
+let rows = [];
+async function load(){
+  if (!$("key").value.trim()) return say("Enter your admin key.", "err");
+  store.set("sportsgolf:adminKey", $("remember").checked ? $("key").value.trim() : null);
+  $("load").disabled = true; say("Loading…");
+  try { rows = await rpc("admin_list", {p_day: $("day").value || today}) || []; say(`${rows.length} score${rows.length===1?"":"s"} on ${$("day").value}.`, "ok"); render(); }
+  catch(e){ say(e.message === "bad admin key" ? "That admin key isn't right." : "Couldn't load: " + e.message, "err"); $("results").innerHTML = ""; }
+  finally { $("load").disabled = false; }
+}
+function render(){
+  if (!rows.length) { $("results").innerHTML = `<div class="card"><p class="empty">No scores for this day.</p></div>`; return; }
+  const byMix = {}; rows.forEach(r => (byMix[r.mix] = byMix[r.mix] || []).push(r));
+  $("results").innerHTML = Object.entries(byMix).map(([mix, list]) => `<div class="card"><h2>${esc(mixLabel(mix))}</h2><table>
+    <tr><th>Name</th><th>Score</th><th>Off</th><th>Strikes</th><th>Posted</th><th></th></tr>
+    ${list.map(r => `<tr class="${r.hidden?"hidden":""}"><td class="nm">${esc(r.name)} ${r.hidden?'<span class="pill h">hidden</span>':""}</td><td>${toPar(r.total)}</td><td>${r.spots}</td><td>${r.strikes}</td>
+      <td>${new Date(r.created_at).toLocaleTimeString("en-US",{hour:"numeric",minute:"2-digit"})}</td>
+      <td class="act"><button class="warn" data-act="${r.hidden?"show":"hide"}" data-id="${r.id}">${r.hidden?"Unhide":"Hide"}</button><button class="del" data-act="del" data-id="${r.id}">Delete</button></td></tr>`).join("")}
+  </table></div>`).join("");
+  $("results").querySelectorAll("button[data-act]").forEach(b => b.onclick = () => act(b.dataset.act, +b.dataset.id, b));
+}
+let pendingDelete = null;
+async function act(kind, id, btn){
+  const r = rows.find(x => x.id === id); if (!r) return;
+  if (kind === "del") { pendingDelete = r; $("confirmText").textContent = `"${r.name}" · ${toPar(r.total)} on ${r.day} (${mixLabel(r.mix)})`; $("confirm").classList.add("on"); return; }
+  btn.disabled = true;
+  try { await rpc("admin_set_hidden", {p_id: id, p_hidden: kind === "hide"}); r.hidden = kind === "hide"; say(`${r.hidden ? "Hid" : "Restored"} "${r.name}".`, "ok"); render(); }
+  catch(e){ say("Couldn't update: " + e.message, "err"); btn.disabled = false; }
+}
+$("confirmNo").onclick = () => { pendingDelete = null; $("confirm").classList.remove("on"); };
+$("confirmYes").onclick = async () => {
+  const r = pendingDelete; $("confirm").classList.remove("on"); if (!r) return;
+  try { await rpc("admin_delete", {p_id: r.id}); rows = rows.filter(x => x.id !== r.id); say(`Deleted "${r.name}".`, "ok"); render(); }
+  catch(e){ say("Couldn't delete: " + e.message, "err"); }
+};
+$("load").onclick = load;
+$("key").addEventListener("keydown", e => { if (e.key === "Enter") load(); });
+$("remember").onchange = () => { if (!$("remember").checked) store.set("sportsgolf:adminKey", null); };
+})();
+</script>
+</body>
+</html>

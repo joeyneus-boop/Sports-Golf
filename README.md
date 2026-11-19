@@ -24,7 +24,7 @@ A name that isn't on the leaderboard is a strike. Three strikes (or Give up) is 
 2. SQL Editor → paste `supabase/schema.sql` → Run.
 3. Project Settings → API Keys: copy the Project URL and the publishable key into `SUPABASE_URL` and `SUPABASE_ANON_KEY` near the leaderboard section of `index.html`. (Already done for the live site.)
 
-To hide an offensive name, open the `scores` table in the Supabase dashboard and set `hidden` to true on that row.
+**Moderation:** names are checked against a hashed copy of the LDNOOBW English blocklist in the browser and again in the database (`supabase/name_filter_and_admin.sql`). To hide or delete scores, open `/admin.html` and enter the admin key.
 
 ## Data
 Rankings are a snapshot from Nov 17, 2026 (Basketball/Hockey/Baseball/Sports Reference, footballdb, drafthistory.com, Wikipedia).
