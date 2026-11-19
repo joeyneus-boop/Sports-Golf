@@ -89,15 +89,16 @@ header.top{display:flex;align-items:center;justify-content:space-between;gap:12p
 .scorecard td.cur{outline:3px solid var(--gold);outline-offset:-3px}
 /* screens */
 .screen{display:none}.screen.on{display:block}
-.intro{padding:26px 24px;display:grid;grid-template-columns:1.2fr 1fr;gap:24px}
-@media (max-width:820px){.intro{grid-template-columns:1fr}}
+.intro{padding:26px 24px;display:grid;grid-template-columns:minmax(0,1.2fr) minmax(0,1fr);gap:24px}
+@media (max-width:820px){.intro{grid-template-columns:minmax(0,1fr)}}
 @media (max-width:480px){.logo small{display:none}.logo h1{font-size:26px}.question{font-size:25px}}
 .intro h2{font-family:'Bowlby One SC';font-size:34px;margin:0 0 6px;color:var(--fair-d);line-height:1}
 .intro p{margin:0 0 10px;line-height:1.45}
 .rules{list-style:none;padding:0;margin:14px 0;display:grid;gap:8px}
 .rules li{display:flex;gap:10px;align-items:flex-start;font-size:15px}
 .rules b{font-family:'Barlow Condensed';font-size:17px}
-.mixtabs{display:flex;gap:6px;overflow-x:auto;padding:0 0 8px;margin:-2px 0 4px;scrollbar-width:thin}
+.mixtabs{display:flex;flex-wrap:wrap;gap:6px;padding:0 0 8px;margin:-2px 0 4px;min-width:0}
+.lb{min-width:0}
 .mixtabs:empty{display:none}
 .mixtab{flex:none;font:700 13px 'Barlow Condensed',sans-serif;letter-spacing:.3px;border:2px solid var(--line);background:transparent;color:inherit;border-radius:999px;padding:3px 10px;cursor:pointer;white-space:nowrap}
 .mixtab small{opacity:.65;font-weight:600;margin-left:4px}
@@ -206,7 +207,7 @@ header.top{display:flex;align-items:center;justify-content:space-between;gap:12p
 
   <!-- FINAL -->
   <section class="screen" id="sFinal">
-    <div class="card final" style="display:grid;grid-template-columns:1.1fr 1fr;gap:24px" id="finalGrid">
+    <div class="card final" style="display:grid;grid-template-columns:minmax(0,1.1fr) minmax(0,1fr);gap:24px" id="finalGrid">
       <div>
         <div class="sub" id="finalSub">Final score</div>
         <div class="total" id="finalTotal">+0</div>
@@ -805,7 +806,7 @@ function finish(){
   $("finalVerdict").textContent = `${verdict(t)} · ${spotsOff()} spots off · ${strikeCount()} strike${strikeCount()===1?"":"s"}`;
   $("shareText").textContent = shareText();
   drawScorecard("scTable2");
-  if (innerWidth < 820) $("finalGrid").style.gridTemplateColumns = "1fr";
+  if (innerWidth < 820) $("finalGrid").style.gridTemplateColumns = "minmax(0,1fr)";
   $("playAgainBtn").style.display = $("dailyBtn").style.display = MODE === "unl" ? "" : "none";
   if (MODE === "unl") { $("postNote").textContent = ""; $("resetBtn2").style.display = "none"; renderUnlPanel(); return; }
   postScore();
