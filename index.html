@@ -155,6 +155,7 @@ header.top{display:flex;align-items:center;justify-content:space-between;gap:12p
           <li><span class="chip sc-meh">+1 / +2</span><span><b>Bogey</b> 21–30 off · <b>Double bogey</b> 31–40 off</span></li>
           <li><span class="chip sc-bad">+3</span><span><b>Triple bogey</b> 41+ off.</span></li>
           <li><span class="chip sc-water">3 strikes</span><span>A name that isn't on the leaderboard is a <b>strike</b>, and you swing again. Three strikes or <b>Give up</b> = <b>splash</b> (+3).</span></li>
+          <li><span class="chip sc-par">123</span><span><b>Number holes:</b> some holes name the player and ask for their <b>rank</b> (scored by spots off) or their <b>stat</b> (Hole in one within 0.5%, Eagle 2%, Birdie 5%, Par 10%, Bogey 20%, Double 35%).</span></li>
           <li><span class="chip sc-par">Ties</span><span>Broken by <b>total spots off</b> (a splash counts as 100), then fewest strikes.</span></li>
         </ul>
         <div class="field"><label for="nameIn">Your name</label><input id="nameIn" maxlength="20" placeholder="e.g. Tiger" autocomplete="nickname"></div>
@@ -289,7 +290,7 @@ const store = {
 function toast(msg){const t=$("toast");t.textContent=msg;t.classList.add("on");clearTimeout(toast._t);toast._t=setTimeout(()=>t.classList.remove("on"),2200);}
 const mixKey = sports => ALL_SPORTS.filter(s => sports.includes(s)).join("-");
 // Hockey leaves the daily course from Nov 20 (still in Unlimited)
-const NO_DAILY = TODAY >= "2026-11-20" ? ["NHL"] : [];
+const NO_DAILY = [["NHL","2026-11-20"],["MLB","2026-11-22"]].filter(([s,d]) => TODAY >= d).map(([s]) => s);   // Unlimited-only sports
 const DAILY_SPORTS = ALL_SPORTS.filter(s => !NO_DAILY.includes(s));
 const mixLabel = (key, base = (NO_DAILY.length && !key.split("-").some(s => NO_DAILY.includes(s))) ? DAILY_SPORTS : ALL_SPORTS) => { const has = key.split("-"), miss = base.filter(s => !has.includes(s));
   return !miss.length ? "All sports" : miss.length <= 2 ? "No " + miss.join(" or ") : has.join(" + "); };
@@ -373,7 +374,52 @@ function buildSchedule(uptoDay, sports){
     }
     today = chosen;
   }
+  if (today && uptoDay >= KIND_DAY) assignKinds(today, mulberry32(hashStr("kind:" + key + ":" + uptoDay)));
   return today;
+}
+// ---------- question kinds: "name" the player at a rank, guess a player's "value", or guess a player's "rank" ----------
+const KIND_DAY = dayNum("2026-11-22") - dayNum(EPOCH);
+function assignKinds(holes, r){
+  holes.forEach(h => h.kind = "name");
+  const idx = [...holes.keys()]; for (let i = idx.length-1; i>0; i--) { const j=Math.floor(r()*(i+1)); [idx[i],idx[j]]=[idx[j],idx[i]]; }
+  const n = Math.min(holes.length, 3);   // three number holes a round: at least one of each kind
+  idx.slice(0, n).forEach((k, i) => holes[k].kind = i === 0 ? "value" : i === 1 ? "rank" : (r() < .5 ? "value" : "rank"));
+  return holes;
+}
+const isPct = cat => /%$/.test(cat.unit);
+// thresholds: a guess's miss is turned into "spots" so the usual bands apply (HIO 0, Eagle 1-5, Birdie 6-10, Par 11-20, Bogey 21-30, Double 31-40, Triple 41+)
+const VALUE_EDGES = {pct:[0.05, 0.3, 0.75, 1.5, 3, 5], rel:[0.5, 2, 5, 10, 20, 35]};
+const SPOT_EDGES = [0, 5, 10, 20, 30, 40];
+function missToSpots(x, E){
+  if (x <= E[0]) return 0;
+  for (let k = 1; k < E.length; k++) if (x <= E[k]) return Math.round((SPOT_EDGES[k-1]+1) + (x - E[k-1]) / (E[k] - E[k-1]) * (SPOT_EDGES[k] - SPOT_EDGES[k-1] - 1));
+  return Math.min(100, Math.round(41 + (x - E[E.length-1]) / E[E.length-1] * 59));
+}
+function parseNum(str, kind){
+  let t = String(str).toLowerCase().replace(/[,\s#%]/g, "").replace(/(st|nd|rd|th)$/, "");
+  let mul = 1; if (/k$/.test(t)) { mul = 1000; t = t.slice(0,-1); } else if (/m$/.test(t)) { mul = 1e6; t = t.slice(0,-1); }
+  if (!/^\d*\.?\d+$/.test(t)) return null;
+  const v = parseFloat(t) * mul; if (!isFinite(v) || v < 0) return null;
+  return kind === "rank" ? Math.round(v) : v;
+}
+function scoreNumber(hole, g){
+  let dist, off;
+  if (hole.kind === "rank") { dist = Math.min(100, Math.abs(g - hole.rank)); off = dist ? `${dist} spot${dist===1?"":"s"} off` : ""; }
+  else {
+    const v = hole.target[1];
+    if (isPct(hole.cat)) { const x = Math.abs(g - v); dist = missToSpots(x, VALUE_EDGES.pct); off = x ? `${(+x.toFixed(2))} points off` : ""; }
+    else { const x = Math.abs(g - v) / Math.max(v, 50) * 100; /* small totals are judged as if out of 50 */ dist = g === v ? 0 : missToSpots(x, VALUE_EDGES.rel); off = g === v ? "" : `${fmtNum(Math.round(Math.abs(g - v)*100)/100)} off (${x < 10 ? x.toFixed(1) : Math.round(x)}%)`; }
+  }
+  const b = BANDS.find(b => dist <= b.max);
+  return {...b, dist, strokes:b.s, hio: dist === 0, off};
+}
+const kindOf = h => h.kind || "name";
+const seasonTag = h => h.cat.scope === "season-alltime" && h.target[3] ? ` (${h.target[3]})` : "";
+function questionHTML(h){
+  const nm = `<span class="rk">${escapeHtml(h.target[0])}</span>${escapeHtml(seasonTag(h))}`;
+  if (kindOf(h) === "rank") return `Where does ${nm} rank ${h.cat.q}?`;
+  if (kindOf(h) === "value") return `What's ${nm}'s number ${h.cat.q.replace(/^all-time /, "")}? <span class="hint" style="font-size:.55em;display:inline-block">(${escapeHtml(h.cat.unit)})</span>`;
+  return `Name the player ranked <span class="rk">${ord(h.rank)}</span> ${h.cat.q}.`;
 }
 
 // ---------- name filter (hashed fingerprints of racial, ethnic, homophobic and other slurs) ----------
@@ -696,7 +742,7 @@ function drawStrip(walkTo){
 function drawScorecard(tblId){
   const t=$(tblId); let h="<tr><th>HOLE</th>"; for(let i=0;i<HOLES;i++)h+=`<th>${i+1}</th>`; h+="<th>TOT</th></tr>";
   h+=`<tr><td class="lab">League</td>`+ROUND.map(r=>`<td>${r.cat.sport}</td>`).join("")+"<td></td></tr>";
-  h+=`<tr><td class="lab">Rank</td>`+ROUND.map(r=>`<td>#${r.rank}</td>`).join("")+"<td></td></tr>";
+  h+=`<tr><td class="lab">Rank</td>`+ROUND.map((r,i)=>`<td>${kindOf(r)==="name" || state.shots[i] ? "#"+r.rank : kindOf(r)==="rank" ? "#?" : "123"}</td>`).join("")+"<td></td></tr>";
   h+=`<tr><td class="lab">Result</td>`;
   for(let i=0;i<HOLES;i++){const s=state.shots[i]; h+= s ? `<td class="${callFor(s).cls}" title="${callFor(s).t}">${callFor(s).e}</td>` : `<td class="${i===current&&tblId==="scTable"?"cur":""}">·</td>`;}
   h+=`<td></td></tr><tr><td class="lab">Score</td>`;
@@ -710,13 +756,17 @@ function drawScorecard(tblId){
 function showHole(i, walked){
   busy = false; current = i; const hole = ROUND[i];
   $("holeN").textContent = `Hole ${i+1}`;
-  $("holeYd").textContent = `${120 + hole.rank*4} yds · ${hole.cat.scope==="career"?"Career":"Season"}`;
+  $("holeYd").textContent = `${kindOf(hole)==="name" ? 120 + hole.rank*4 : 150 + hole.layout % 300} yds · ${hole.cat.scope==="career"?"Career":"Season"}`;
   const tag = $("sportTag"); tag.textContent = hole.cat.sport; tag.className = "sport s-"+hole.cat.sport;
-  $("question").innerHTML = `Name the player ranked <span class="rk">${ord(hole.rank)}</span> ${hole.cat.q}.`;
+  $("question").innerHTML = questionHTML(hole);
+  const numQ = kindOf(hole) !== "name";
+  $("guess").placeholder = kindOf(hole) === "rank" ? "Type a rank, e.g. 17" : kindOf(hole) === "value" ? `Type a number${isPct(hole.cat) ? ", e.g. 41.5" : ", e.g. 12,345"}` : "Type a player's full name";
+  $("guess").inputMode = numQ ? "decimal" : "text";
+  $("strikeDots").style.display = numQ ? "none" : "";
   $("result").className = "result"; $("result").innerHTML = "";
   $("guess").value = ""; $("guess").disabled = false; $("swingBtn").disabled = false; $("giveUpBtn").disabled = false;
   if (!state.pending || state.pending.hole !== i) { state.pending = {hole:i, strikes:[]}; store.set(KEY, state); }
-  drawStrikes();
+  drawStrikes(kindOf(hole) === "rank" ? "One swing: guess the rank. Same bands as always." : kindOf(hole) === "value" ? `One swing. Hole in one within ${isPct(hole.cat) ? "0.05 points" : "0.5%"}, eagle within ${isPct(hole.cat) ? "0.3" : "2%"}, birdie ${isPct(hole.cat) ? "0.75" : "5%"}, par ${isPct(hole.cat) ? "1.5" : "10%"}, bogey ${isPct(hole.cat) ? "3" : "20%"}, double ${isPct(hole.cat) ? "5" : "35%"}.` : undefined);
   $("strokeBadge").textContent = `${COURSE_NAME} · ${toPar(total())}`;
   drawHole(hole); drawStrip(walked ? i : undefined); drawScorecard("scTable");
   setTimeout(()=>$("guess").focus(), 50);
@@ -724,14 +774,15 @@ function showHole(i, walked){
 const escapeHtml = s => String(s).replace(/[&<>"']/g,c=>({"&":"&amp;","<":"&lt;",">":"&gt;",'"':"&quot;","'":"&#39;"}[c]));
 function revealHTML(hole, shot){
   const c = callFor(shot), row = hole.target;
-  const off = shot.ob ? "" : shot.dist === 0 ? "" : ` You were ${shot.dist} spot${shot.dist===1?"":"s"} off.`;
-  const yours = shot.matched ? `${escapeHtml(shot.matched[0])} (#${shot.matched[2]} · ${fmtNum(shot.matched[1])} ${hole.cat.unit})` : `Three strikes. Nobody on this leaderboard.`;
+  const nk = kindOf(hole) !== "name";
+  const off = shot.ob ? "" : shot.dist === 0 ? "" : nk ? (shot.off ? ` You were ${shot.off}.` : "") : ` You were ${shot.dist} spot${shot.dist===1?"":"s"} off.`;
+  const yours = nk ? (shot.num == null ? "Gave up" : kindOf(hole) === "rank" ? `#${shot.num}` : `${fmtNum(shot.num)} ${hole.cat.unit}`) : shot.matched ? `${escapeHtml(shot.matched[0])} (#${shot.matched[2]} · ${fmtNum(shot.matched[1])} ${hole.cat.unit})` : `Three strikes. Nobody on this leaderboard.`;
   return `<p class="call ${c.c==="par"?"ok":c.c}">${c.t}</p><p class="quip">${escapeHtml(c.q)}${off} ${toPar(shot.strokes)}.</p>
   <div class="reveal">
     <div class="big">${ord(hole.rank)}: ${escapeHtml(row[0])}</div>
     <div><div class="k">${hole.cat.unit}</div><div class="v">${fmtNum(row[1])}</div></div>
     <div><div class="k">${row[3] ? (hole.cat.scope==="season-alltime"?"Season":"Team / Years") : "Source"}</div><div class="v">${escapeHtml(row[3] || hole.cat.src)}</div></div>
-    <div style="grid-column:1/-1"><div class="k">Your shot</div><div class="v">${shot.gaveUp && !shot.matched ? "Gave up" : yours}${shot.dist ? ` · ${shot.dist} off` : ""}</div></div>
+    <div style="grid-column:1/-1"><div class="k">Your shot</div><div class="v">${!nk && shot.gaveUp && !shot.matched ? "Gave up" : yours}${shot.dist && !nk ? ` · ${shot.dist} off` : nk && shot.off ? ` · ${shot.off}` : ""}</div></div>
     ${shot.strikes && shot.strikes.length ? `<div style="grid-column:1/-1"><div class="k">Strikes</div><div class="v">${shot.strikes.map(escapeHtml).join(", ")}</div></div>` : ""}
     <div style="grid-column:1/-1"><a href="${hole.cat.url}" target="_blank" rel="noopener">See the full leaderboard on ${escapeHtml(hole.cat.src.replace(/ \(.*\)$/,""))} ↗</a></div>
   </div>`;
@@ -768,11 +819,32 @@ async function playShot(row, opts){
   $("nextBtn").focus();
   $("nextBtn").onclick = () => { busy = false; if (current === HOLES-1) finish(); else showHole(current+1, true); };
 }
+async function playNumber(g){
+  busy = true; $("guess").disabled = true; $("swingBtn").disabled = true; $("giveUpBtn").disabled = true;
+  const hole = ROUND[current];
+  const res = g == null ? {...WATER, ob:true, dist:null, strokes:WATER.s} : scoreNumber(hole, g);
+  const shot = {guess: g == null ? "" : String(g), num: g, matched: null, ob: !!res.ob, dist: res.dist, strokes: res.strokes, off: res.off || "",
+    spots: g == null ? SPLASH_SPOTS : res.dist, strikes: [], gaveUp: g == null,
+    quip: g == null ? "Gave up and dropped one in the pond. +3." : pick(QUIPS[res.hio ? "hio" : res.t])};
+  state.shots[current] = shot; state.pending = null; store.set(KEY, state);
+  await animateShot(res);
+  const box = $("result"); box.innerHTML = revealHTML(hole, shot) + `<div class="next"><button class="btn gold" id="nextBtn">${current===HOLES-1?"Finish round 🏆":"Next hole →"}</button></div>`;
+  box.className = "result show";
+  $("strokeBadge").textContent = `${COURSE_NAME} · ${toPar(total())}`;
+  drawScorecard("scTable"); drawStrip();
+  $("nextBtn").focus();
+  $("nextBtn").onclick = () => { busy = false; if (current === HOLES-1) finish(); else showHole(current+1, true); };
+}
 $("swingForm").addEventListener("submit", ev => {
   ev.preventDefault(); if (busy) return;
   const guess = $("guess").value.trim();
   if (!guess) { $("qcard").classList.add("shake"); setTimeout(()=>$("qcard").classList.remove("shake"),400); return; }
   const hole = ROUND[current];
+  if (kindOf(hole) !== "name") {
+    const g = parseNum(guess, kindOf(hole));
+    if (g == null || (kindOf(hole) === "rank" && g < 1)) { $("qcard").classList.add("shake"); setTimeout(()=>$("qcard").classList.remove("shake"),400); drawStrikes(kindOf(hole) === "rank" ? "Type a rank number, like 17." : "Type a number, like 12,345."); return; }
+    return playNumber(g);
+  }
   const row = matchGuess(guess, hole.cat, hole.rank);
   if (row) return playShot(row, {guess});
   state.pending = state.pending && state.pending.hole === current ? state.pending : {hole: current, strikes: []};
@@ -783,7 +855,7 @@ $("swingForm").addEventListener("submit", ev => {
   drawStrikes(`Strike ${n}: "${guess}" isn't on this leaderboard. ${MAX_STRIKES-n} swing${MAX_STRIKES-n===1?"":"s"} left.`);
   $("guess").value = ""; $("guess").focus();
 });
-$("giveUpBtn").onclick = () => { if (!busy) playShot(null, {gaveUp: true}); };
+$("giveUpBtn").onclick = () => { if (busy) return; if (kindOf(ROUND[current]) !== "name") playNumber(null); else playShot(null, {gaveUp: true}); };
 function screen(id){ ["sIntro","sPlay","sFinal"].forEach(s=>$(s).classList.toggle("on", s===id)); $("homeBtn").style.display = id === "sIntro" ? "none" : ""; scrollTo({top:0,behavior:"smooth"}); }
 function goHome(){
   busy = false;
@@ -794,7 +866,7 @@ function goHome(){
 
 // ---------- finish / share ----------
 function shareText(){
-  const lines = state.shots.map((s,i)=>`${i+1}. ${ROUND[i].cat.sport} #${ROUND[i].rank}: ${callFor(s).t.replace("!","")} (${toPar(s.strokes)})`);
+  const lines = state.shots.map((s,i)=>`${i+1}. ${ROUND[i].cat.sport} ${kindOf(ROUND[i])==="value" ? "stat" : kindOf(ROUND[i])==="rank" ? "rank" : "#"+ROUND[i].rank}: ${callFor(s).t.replace("!","")} (${toPar(s.strokes)})`);
   return `⛳ Sports Golf · ${MODE==="unl" ? "Unlimited" : "Course #"+(DAY+1)} · ${COURSE_NAME}\n${NAME && !nameBlocked(NAME) ? NAME + ": " : ""}${toPar(total())} · ${spotsOff()} spots off · ${strikeCount()} strike${strikeCount()===1?"":"s"}  (${MODE==="unl" ? mixLabel(MIX, ALL_SPORTS) : mixLabel(MIX)})\n${state.shots.map(s=>callFor(s).e).join("")}\n` + lines.join("\n");
 }
 function verdict(t){ if (t<=-15) return "Tour card material"; if (t<=-6) return "Green jacket stuff"; if (t<0) return "Under par. Nice round."; if (t<=4) return "Solid club champion"; if (t<=12) return "Weekend hacker"; return "Bring more balls"; }
@@ -820,7 +892,7 @@ $("copyBtn").onclick = async () => {
 };
 $("reviewBtn").onclick = () => {
   const box = $("reviewList"); const show = box.style.display === "none"; box.style.display = show ? "block" : "none";
-  if (show) box.innerHTML = ROUND.map((h,i)=> state.shots[i] ? `<div style="padding:12px 0;border-bottom:2px dashed var(--line)"><div style="font-family:'Barlow Condensed';font-weight:700;color:var(--muted)">HOLE ${i+1} · ${h.cat.sport}: ranked ${ord(h.rank)} ${escapeHtml(h.cat.q)}</div>${revealHTML(h, state.shots[i])}</div>` : "").join("");
+  if (show) box.innerHTML = ROUND.map((h,i)=> state.shots[i] ? `<div style="padding:12px 0;border-bottom:2px dashed var(--line)"><div style="font-family:'Barlow Condensed';font-weight:700;color:var(--muted)">HOLE ${i+1} · ${h.cat.sport}: ${kindOf(h)==="name" ? `ranked ${ord(h.rank)} ${escapeHtml(h.cat.q)}` : questionHTML(h).replace(/<[^>]+>/g,"")}</div>${revealHTML(h, state.shots[i])}</div>` : "").join("");
 };
 
 
@@ -930,7 +1002,7 @@ function buildUnlimited(sports, seed){
     chosen.push({cat:c, rank, target: c.rows.find(r=>r[2]===rank), layout: hashStr("unl:"+seed+":"+c.id+":"+rank)});
   }
   for (let i = chosen.length-1; i>0; i--) { const j=Math.floor(rnd()*(i+1)); [chosen[i],chosen[j]]=[chosen[j],chosen[i]]; }
-  return chosen;
+  return assignKinds(chosen, mulberry32(hashStr("kind:unl:" + seed)));
 }
 function setTheme(seed){
   if (seed == null) { THEME = DAILY_THEME; COURSE_NAME = DAILY_NAME; }
@@ -983,7 +1055,7 @@ function renderChips(){
   });
   const few = dailyLists(SPORTS);
   $("mixHint").textContent = `${mixLabel(DMIX())} · ${few} stat leaderboard${few===1?"":"s"}. Everyone who picks the same sports gets the same course today.` + (few < 8 ? " Fewer sports means questions come back around sooner." : "")
-    + (NO_DAILY.length ? ` ${NO_DAILY.join(", ")} is Unlimited only: daily courses skip it.` : "");
+    + (NO_DAILY.length ? ` ${NO_DAILY.join(" and ")} ${NO_DAILY.length>1?"are":"is"} Unlimited only: daily courses skip ${NO_DAILY.length>1?"them":"it"}.` : "");
 }
 function refreshIntro(){
   const done = state.shots.length >= HOLES, posted = myServerEntry();
