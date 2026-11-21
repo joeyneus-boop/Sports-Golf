@@ -384,8 +384,16 @@ function assignKinds(holes, r){
   const idx = [...holes.keys()]; for (let i = idx.length-1; i>0; i--) { const j=Math.floor(r()*(i+1)); [idx[i],idx[j]]=[idx[j],idx[i]]; }
   const n = Math.min(holes.length, 3);   // three number holes a round: at least one of each kind
   idx.slice(0, n).forEach((k, i) => holes[k].kind = i === 0 ? "value" : i === 1 ? "rank" : (r() < .5 ? "value" : "rank"));
+  // stat holes ask about well-known players: near the top of the list, or a name that shows up on several lists
+  holes.forEach(h => { if (h.kind !== "value") return;
+    const taken = new Set(holes.filter(o => o !== h).map(o => o.target[0]));
+    const pro = !["CFB","CBB"].includes(h.cat.sport) && h.cat.scope === "career";
+    const pool = h.cat.rows.filter(row => !taken.has(row[0]) && row[2] <= 60 && (fame()[row[0]] >= 4 || (pro && row[2] <= 5)));
+    if (pool.length) { const row = pool[Math.floor(r() * pool.length)]; h.rank = row[2]; h.target = row; } else h.kind = "rank"; });
   return holes;
 }
+let _fame = null;
+const fame = () => _fame || (_fame = CATEGORIES.reduce((m, c) => { new Set(c.rows.map(x => x[0])).forEach(n => m[n] = (m[n]||0) + 1); return m; }, {}));
 const isPct = cat => /%$/.test(cat.unit);
 // thresholds: a guess's miss is turned into "spots" so the usual bands apply (HIO 0, Eagle 1-5, Birdie 6-10, Par 11-20, Bogey 21-30, Double 31-40, Triple 41+)
 const VALUE_EDGES = {pct:[0.05, 0.3, 0.75, 1.5, 3, 5], rel:[0.5, 2, 5, 10, 20, 35]};
@@ -893,6 +901,8 @@ $("copyBtn").onclick = async () => {
 $("reviewBtn").onclick = () => {
   const box = $("reviewList"); const show = box.style.display === "none"; box.style.display = show ? "block" : "none";
   if (show) box.innerHTML = ROUND.map((h,i)=> state.shots[i] ? `<div style="padding:12px 0;border-bottom:2px dashed var(--line)"><div style="font-family:'Barlow Condensed';font-weight:700;color:var(--muted)">HOLE ${i+1} · ${h.cat.sport}: ${kindOf(h)==="name" ? `ranked ${ord(h.rank)} ${escapeHtml(h.cat.q)}` : questionHTML(h).replace(/<[^>]+>/g,"")}</div>${revealHTML(h, state.shots[i])}</div>` : "").join("");
+  if (show) setTimeout(() => box.scrollIntoView({behavior:"smooth", block:"start"}), 50);
+  $("reviewBtn").textContent = show ? "Hide holes" : "Review holes";
 };
 
 
