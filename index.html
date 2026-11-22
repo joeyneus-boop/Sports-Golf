@@ -104,6 +104,9 @@ header.top{display:flex;align-items:center;justify-content:space-between;gap:12p
 .mixtab small{opacity:.65;font-weight:600;margin-left:4px}
 .mixtab.mine{border-color:#5fb55a}
 .mixtab.on{background:#5fb55a;border-color:#5fb55a;color:#fff}
+.archlist{display:flex;flex-direction:column;gap:6px}
+.archrow{display:flex;justify-content:space-between;align-items:center;gap:10px;text-align:left;font:600 15px 'Barlow',sans-serif;border:2px solid var(--line);background:transparent;color:inherit;border-radius:12px;padding:8px 12px;cursor:pointer}
+.archrow:hover{border-color:#5fb55a}.archrow b{font-family:'Barlow Condensed',sans-serif;font-size:17px}.archrow .sc{font-family:'Barlow Condensed',sans-serif;font-weight:700;color:var(--muted);white-space:nowrap}
 .chip{flex:none;font-family:'Barlow Condensed';font-weight:800;min-width:64px;text-align:center;border-radius:6px;padding:2px 6px;font-size:14px}
 .lb{padding:18px}
 .lb h3,.final h3{font-family:'Bowlby One SC';margin:0 0 10px;color:var(--fair-d);font-size:22px}
@@ -154,7 +157,7 @@ header.top{display:flex;align-items:center;justify-content:space-between;gap:12p
           <li><span class="chip sc-par">E</span><span><b>Par</b> 11–20 spots off</span></li>
           <li><span class="chip sc-meh">+1 / +2</span><span><b>Bogey</b> 21–30 off · <b>Double bogey</b> 31–40 off</span></li>
           <li><span class="chip sc-bad">+3</span><span><b>Triple bogey</b> 41+ off.</span></li>
-          <li><span class="chip sc-water">+5 / +3</span><span>A name that isn't on the leaderboard is a <b>strike</b>, and you swing again. Three strikes = <b>splash</b> (+5). <b>Give up</b> = splash (+3).</span></li>
+          <li><span class="chip sc-water">3 strikes</span><span>A name that isn't on the leaderboard is a <b>strike</b>, and you swing again. Three strikes or <b>Give up</b> = <b>splash</b> (+5).</span></li>
           <li><span class="chip sc-par">Ties</span><span>Broken by <b>total spots off</b> (a splash counts as 100), then fewest strikes.</span></li>
         </ul>
         <div class="field"><label for="nameIn">Your name</label><input id="nameIn" maxlength="20" placeholder="e.g. Tiger" autocomplete="nickname"></div>
@@ -166,8 +169,14 @@ header.top{display:flex;align-items:center;justify-content:space-between;gap:12p
         <div style="display:flex;gap:10px;flex-wrap:wrap;margin-top:14px">
           <button class="btn gold" id="teeBtn">Tee off ⛳</button>
           <button class="btn" id="unlBtn">Unlimited ♾️</button>
+          <button class="btn ghost" id="archBtn">Archive 📚</button>
           <button class="btn ghost" id="viewFinal" style="display:none">See my scorecard</button>
           <button class="btn ghost" id="resetBtn" style="display:none">↺ Reset my round</button>
+        </div>
+        <div id="archPanel" style="display:none;margin-top:16px">
+          <h3 style="margin:0 0 4px">Past courses</h3>
+          <p class="hint" style="margin:0 0 8px">Replay any earlier daily course with your sports. Archive rounds don't count toward the leaderboard.</p>
+          <div id="archList" class="archlist"></div>
         </div>
       </div>
       <div class="lb" style="padding:0">
@@ -259,7 +268,7 @@ const BANDS = [
   {max:40,  s:2,  t:"Double Bogey",  c:"meh",   cls:"sc-meh", e:"🟧"},
   {max:1e9, s:3,  t:"Triple Bogey",  c:"bad",   cls:"sc-bad", e:"🟥"},
 ];
-const WATER = {s:3, t:"SPLASH!", c:"water", cls:"sc-water", e:"💧"};
+const WATER = {s:5, t:"SPLASH!", c:"water", cls:"sc-water", e:"💧"};
 const QUIPS = {
   hio:["Pin seeker! Straight into the cup.","Drained it. Drinks are on you in the clubhouse.","Ace! Frame that scorecard."],
   "Eagle":["Stuck it close. Tap-in eagle.","Flag hunting. Beautiful swing.","That's a tour-level approach."],
@@ -813,7 +822,6 @@ async function playShot(row, opts){
   busy = true; $("guess").disabled = true; $("swingBtn").disabled = true; $("giveUpBtn").disabled = true;
   const hole = ROUND[current];
   const res = scoreShot(hole, row);
-  if (!row && !opts.gaveUp) res.strokes = STRIKEOUT;   // struck out: +5 (giving up stays +3)
   const strikes = (state.pending && state.pending.strikes) || [];
   const shot = {guess: opts.guess || "", matched: row, ob: !!res.ob, dist: res.dist, strokes: res.strokes,
     spots: row ? res.dist : SPLASH_SPOTS, strikes: strikes.slice(), gaveUp: !!opts.gaveUp,
@@ -868,7 +876,7 @@ $("giveUpBtn").onclick = () => { if (busy) return; if (kindOf(ROUND[current]) !=
 function screen(id){ ["sIntro","sPlay","sFinal"].forEach(s=>$(s).classList.toggle("on", s===id)); $("homeBtn").style.display = id === "sIntro" ? "none" : ""; scrollTo({top:0,behavior:"smooth"}); }
 function goHome(){
   busy = false;
-  if (MODE === "unl") return backToDaily();
+  if (MODE !== "daily") return backToDaily();
   $("reviewList").style.display = "none";
   screen("sIntro"); refreshIntro(); renderLB();
 }
@@ -876,19 +884,21 @@ function goHome(){
 // ---------- finish / share ----------
 function shareText(){
   const lines = state.shots.map((s,i)=>`${i+1}. ${ROUND[i].cat.sport} ${kindOf(ROUND[i])==="value" ? "stat" : kindOf(ROUND[i])==="rank" ? "rank" : "#"+ROUND[i].rank}: ${callFor(s).t.replace("!","")} (${toPar(s.strokes)})`);
-  return `⛳ Sports Golf · ${MODE==="unl" ? "Unlimited" : "Course #"+(DAY+1)} · ${COURSE_NAME}\n${NAME && !nameBlocked(NAME) ? NAME + ": " : ""}${toPar(total())} · ${spotsOff()} spots off · ${strikeCount()} strike${strikeCount()===1?"":"s"}  (${MODE==="unl" ? mixLabel(MIX, ALL_SPORTS) : mixLabel(MIX)})\n${state.shots.map(s=>callFor(s).e).join("")}\n` + lines.join("\n");
+  return `⛳ Sports Golf · ${courseLabel()} · ${COURSE_NAME}\n${NAME && !nameBlocked(NAME) ? NAME + ": " : ""}${toPar(total())} · ${spotsOff()} spots off · ${strikeCount()} strike${strikeCount()===1?"":"s"}  (${MODE==="unl" ? mixLabel(MIX, ALL_SPORTS) : MODE==="arch" ? mixLabel(MIX, archBase(ARCH_DAY)) : mixLabel(MIX)})\n${state.shots.map(s=>callFor(s).e).join("")}\n` + lines.join("\n");
 }
 function verdict(t){ if (t<=-15) return "Tour card material"; if (t<=-6) return "Green jacket stuff"; if (t<0) return "Under par. Nice round."; if (t<=4) return "Solid club champion"; if (t<=12) return "Weekend hacker"; return "Bring more balls"; }
 function finish(){
   screen("sFinal");
   const t = total();
   $("finalTotal").textContent = toPar(t);
-  $("finalSub").textContent = `${NAME && !nameBlocked(NAME) ? NAME + " · " : ""}${MODE==="unl" ? "Unlimited" : "Course #"+(DAY+1)} · ${COURSE_NAME}`;
+  $("finalSub").textContent = `${NAME && !nameBlocked(NAME) ? NAME + " · " : ""}${courseLabel()} · ${COURSE_NAME}`;
   $("finalVerdict").textContent = `${verdict(t)} · ${spotsOff()} spots off · ${strikeCount()} strike${strikeCount()===1?"":"s"}`;
   $("shareText").textContent = shareText();
   drawScorecard("scTable2");
   if (innerWidth < 820) $("finalGrid").style.gridTemplateColumns = "minmax(0,1fr)";
-  $("playAgainBtn").style.display = $("dailyBtn").style.display = MODE === "unl" ? "" : "none";
+  $("playAgainBtn").style.display = MODE === "unl" ? "" : "none";
+  $("dailyBtn").style.display = MODE !== "daily" ? "" : "none";
+  if (MODE === "arch") { $("postNote").textContent = ""; $("resetBtn2").style.display = "none"; renderArchPanel(); return; }
   if (MODE === "unl") { $("postNote").textContent = ""; $("resetBtn2").style.display = "none"; renderUnlPanel(); return; }
   postScore();
   renderLB();
@@ -917,7 +927,7 @@ function renderMixTabs(){
   keys.sort((a,b) => (b===DMIX())-(a===DMIX()) || (mixCounts[b]||0)-(mixCounts[a]||0) || mixLabel(a).localeCompare(mixLabel(b)));
   const html = keys.length < 2 ? "" : keys.map(k => `<button class="mixtab${k===DMIX()?" mine":""}${k===lbMix()?" on":""}" data-mix="${k}" title="${k===DMIX()?"Your mix":"View this leaderboard"}">${mixLabel(k)}<small>${mixCounts[k]||0}</small></button>`).join("");
   ["mixTabsIntro","mixTabsFinal"].forEach(id => { const t = $(id); if (!t) return;
-    t.innerHTML = (id === "mixTabsFinal" && MODE === "unl") ? "" : html;
+    t.innerHTML = (id === "mixTabsFinal" && MODE !== "daily") ? "" : html;
     t.querySelectorAll(".mixtab").forEach(b => b.onclick = () => { VIEW_MIX = b.dataset.mix === DMIX() ? null : b.dataset.mix; onMixView(); }); });
 }
 function onMixView(){ lbStatus = "loading"; renderLB(); fetchLB(); }
@@ -953,8 +963,8 @@ async function fetchLB(){
 }
 function myServerEntry(){ return myEntry; }
 function renderLB(){
-  const lists = MODE === "unl" ? [$("lbIntro")] : [$("lbIntro"), $("lbFinal")];
-  $("lbMixIntro").textContent = `Course #${DAY+1} · ${mixLabel(lbMix())}${lbMix()!==DMIX()?" (not your mix)":""}`; if (MODE !== "unl") { $("lbMixFinal").textContent = $("lbMixIntro").textContent; $("lbTitleFinal").textContent = "Today's leaderboard"; }
+  const lists = MODE !== "daily" ? [$("lbIntro")] : [$("lbIntro"), $("lbFinal")];
+  $("lbMixIntro").textContent = `Course #${DAY+1} · ${mixLabel(lbMix())}${lbMix()!==DMIX()?" (not your mix)":""}`; if (MODE === "daily") { $("lbMixFinal").textContent = $("lbMixIntro").textContent; $("lbTitleFinal").textContent = "Today's leaderboard"; }
   renderMixTabs();
   const msg = m => lists.forEach(l => l.innerHTML = `<li class="empty">${m}</li>`);
   if (lbStatus === null) return msg("Leaderboard not set up yet. Your copied result still works anywhere.");
@@ -1035,6 +1045,7 @@ function startUnlimited(fresh){
 }
 function backToDaily(){
   MODE = "daily"; setTheme(null); busy = false; loadMix();
+  $("archPanel").style.display = "none";
   $("courseBadge").textContent = `Course #${DAY+1}`;
   $("reviewList").style.display = "none";
   screen("sIntro"); refreshIntro(); renderLB();
@@ -1052,6 +1063,51 @@ function renderUnlPanel(){
   $("lbFinal").innerHTML = [["Rounds played", st.rounds], ["Best round", toPar(st.best)], ["Average", toPar(Math.round(st.sum/st.rounds*10)/10)], ["Holes in one", st.hio]]
     .map(([k,v]) => `<li><span class="nm">${k}</span><span class="sc">${v}</span></li>`).join("");
 }
+
+// ---------- archive: replay past daily courses ----------
+let ARCH_DAY = null;
+const dateOf = d => new Date(Date.parse(EPOCH + "T12:00:00Z") + d*86400000).toISOString().slice(0,10);
+const archOff = d => [["NHL","2026-11-20"],["MLB","2026-11-22"]].filter(([s,x]) => dateOf(d) >= x).map(([s]) => s);
+const archBase = d => ALL_SPORTS.filter(s => !archOff(d).includes(s));
+function archSports(d){
+  const base = archBase(d), mine = SPORTS.filter(s => base.includes(s));
+  const lists = sp => CATEGORIES.filter(c => sp.includes(c.sport) && sinceDay(c) <= d).length;
+  return lists(mine) >= 3 ? mine : base;
+}
+function themeForDay(d){ const T = THEMES[hashStr("theme:"+d) % THEMES.length]; return {T, name: T.names[hashStr("name:"+d) % T.names.length] + " " + T.suffix}; }
+const courseLabel = () => MODE === "unl" ? "Unlimited" : MODE === "arch" ? `Course #${ARCH_DAY+1} (archive)` : `Course #${DAY+1}`;
+const archKey = (d, mix) => "sportsgolf:arch:" + dateOf(d) + ":" + mix;
+function renderArchive(){
+  const rows = [];
+  for (let d = DAY - 1; d >= 0; d--) {
+    const mix = mixKey(archSports(d)), st = store.get(archKey(d, mix)), daily = store.get("sportsgolf:" + dateOf(d) + ":" + mix);
+    const done = s => s && (s.shots||[]).length >= HOLES ? toPar(s.shots.reduce((a,x)=>a+x.strokes,0)) : null;
+    const tag = done(st) ? `Replayed ${done(st)}` : done(daily) ? `Played ${done(daily)}` : st && (st.shots||[]).length ? `Hole ${st.shots.length+1} of 9` : "Play →";
+    rows.push(`<button class="archrow" data-d="${d}"><span><b>Course #${d+1}</b> · ${new Date(dateOf(d)+"T12:00:00").toLocaleDateString("en-US",{weekday:"short",month:"short",day:"numeric"})} · ${escapeHtml(themeForDay(d).name)}</span><span class="sc">${tag}</span></button>`);
+  }
+  $("archList").innerHTML = rows.join("") || `<p class="hint">No past courses yet. Come back tomorrow.</p>`;
+  [...$("archList").querySelectorAll(".archrow")].forEach(b => b.onclick = () => startArchive(+b.dataset.d));
+}
+function startArchive(d, fresh){
+  MODE = "arch"; ARCH_DAY = d;
+  const sp = archSports(d); MIX = mixKey(sp); KEY = archKey(d, MIX);
+  let s = store.get(KEY); if (fresh || !s || (s.shots||[]).length >= HOLES) s = {shots: []};
+  state = s; store.set(KEY, state);
+  const th = themeForDay(d); THEME = th.T; COURSE_NAME = th.name;
+  ROUND = buildSchedule(d, sp);
+  current = Math.min(state.shots.length, HOLES-1); busy = false;
+  $("courseBadge").textContent = `Course #${d+1} 📚`;
+  $("reviewList").style.display = "none";
+  screen("sPlay"); showHole(state.shots.length, false);
+}
+function renderArchPanel(){
+  $("lbTitleFinal").textContent = "Archive round";
+  $("lbMixFinal").textContent = `Course #${ARCH_DAY+1} from ${new Date(dateOf(ARCH_DAY)+"T12:00:00").toLocaleDateString("en-US",{month:"short",day:"numeric"})}. Archive rounds don't count toward the leaderboard.`;
+  $("lbFinal").innerHTML = `<li><span class="nm">Your score</span><span class="sc">${toPar(total())}</span></li><li><span class="nm">Spots off</span><span class="sc">${spotsOff()}</span></li>` +
+    (ARCH_DAY > 0 ? `<li><span class="nm"><a href="#" id="prevArch">Play course #${ARCH_DAY} →</a></span><span class="sc"></span></li>` : "");
+  const pa = $("prevArch"); if (pa) pa.onclick = e => { e.preventDefault(); startArchive(ARCH_DAY - 1); };
+}
+$("archBtn").onclick = () => { const p = $("archPanel"), show = p.style.display === "none"; p.style.display = show ? "" : "none"; if (show) { renderArchive(); setTimeout(() => p.scrollIntoView({behavior:"smooth", block:"nearest"}), 50); } };
 
 // ---------- intro / boot ----------
 function renderChips(){
