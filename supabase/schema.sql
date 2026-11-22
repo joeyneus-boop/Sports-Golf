@@ -6,7 +6,7 @@ create table if not exists public.scores (
   mix         text        not null check (mix ~ '^[A-Z]{3}(-[A-Z]{3}){0,5}$'),
   player_id   text        not null check (char_length(player_id) between 8 and 64),
   name        text        not null check (char_length(btrim(name)) between 1 and 20),
-  total       smallint    not null check (total between -27 and 27),
+  total       smallint    not null check (total between -27 and 45),
   spots       smallint    not null check (spots between 0 and 900),
   strikes     smallint    not null check (strikes between 0 and 27),
   holes       smallint[]  not null check (array_length(holes, 1) = 9),
@@ -15,11 +15,11 @@ create table if not exists public.scores (
   unique (day, mix, player_id)                      -- one posted round per device per course
 );
 
--- Golf score must equal the sum of the nine holes, and each hole is -3..+3.
+-- Golf score must equal the sum of the nine holes, and each hole is -3..+5.
 create or replace function public.scores_valid() returns trigger language plpgsql as $$
 begin
   if (select sum(h) from unnest(new.holes) h) <> new.total
-     or exists (select 1 from unnest(new.holes) h where h < -3 or h > 3) then
+     or exists (select 1 from unnest(new.holes) h where h < -3 or h > 5) then
     raise exception 'invalid holes';
   end if;
   -- only today's (or yesterday's, for late finishers) course, in US Eastern time

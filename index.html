@@ -154,7 +154,7 @@ header.top{display:flex;align-items:center;justify-content:space-between;gap:12p
           <li><span class="chip sc-par">E</span><span><b>Par</b> 11–20 spots off</span></li>
           <li><span class="chip sc-meh">+1 / +2</span><span><b>Bogey</b> 21–30 off · <b>Double bogey</b> 31–40 off</span></li>
           <li><span class="chip sc-bad">+3</span><span><b>Triple bogey</b> 41+ off.</span></li>
-          <li><span class="chip sc-water">3 strikes</span><span>A name that isn't on the leaderboard is a <b>strike</b>, and you swing again. Three strikes or <b>Give up</b> = <b>splash</b> (+3).</span></li>
+          <li><span class="chip sc-water">+5 / +3</span><span>A name that isn't on the leaderboard is a <b>strike</b>, and you swing again. Three strikes = <b>splash</b> (+5). <b>Give up</b> = splash (+3).</span></li>
           <li><span class="chip sc-par">Ties</span><span>Broken by <b>total spots off</b> (a splash counts as 100), then fewest strikes.</span></li>
         </ul>
         <div class="field"><label for="nameIn">Your name</label><input id="nameIn" maxlength="20" placeholder="e.g. Tiger" autocomplete="nickname"></div>
@@ -797,7 +797,7 @@ function revealHTML(hole, shot){
 }
 
 let busy = false;
-const MAX_STRIKES = 3, SPLASH_SPOTS = 100;
+const MAX_STRIKES = 3, SPLASH_SPOTS = 100, STRIKEOUT = 5;
 function drawStrikes(msg){
   const n = (state.pending && state.pending.strikes.length) || 0;
   $("strikeDots").innerHTML = [...Array(MAX_STRIKES)].map((_,i)=>`<span class="dot ${i<n?"x":""}">${i<n?"✕":""}</span>`).join("");
@@ -813,10 +813,11 @@ async function playShot(row, opts){
   busy = true; $("guess").disabled = true; $("swingBtn").disabled = true; $("giveUpBtn").disabled = true;
   const hole = ROUND[current];
   const res = scoreShot(hole, row);
+  if (!row && !opts.gaveUp) res.strokes = STRIKEOUT;   // struck out: +5 (giving up stays +3)
   const strikes = (state.pending && state.pending.strikes) || [];
   const shot = {guess: opts.guess || "", matched: row, ob: !!res.ob, dist: res.dist, strokes: res.strokes,
     spots: row ? res.dist : SPLASH_SPOTS, strikes: strikes.slice(), gaveUp: !!opts.gaveUp,
-    quip: opts.gaveUp && !row ? "Gave up and dropped one in the pond. +3." : pick(QUIPS[res.hio ? "hio" : res.ob ? "water" : res.t])};
+    quip: opts.gaveUp && !row ? "Gave up and dropped one in the pond." : (res.ob ? pick(QUIPS.water) + " Three strikes." : pick(QUIPS[res.hio ? "hio" : res.t]))};
   state.shots[current] = shot; state.pending = null; store.set(KEY, state);
   drawStrikes(""); 
   await animateShot(res);
@@ -833,7 +834,7 @@ async function playNumber(g){
   const res = g == null ? {...WATER, ob:true, dist:null, strokes:WATER.s} : scoreNumber(hole, g);
   const shot = {guess: g == null ? "" : String(g), num: g, matched: null, ob: !!res.ob, dist: res.dist, strokes: res.strokes, off: res.off || "",
     spots: g == null ? SPLASH_SPOTS : res.dist, strikes: [], gaveUp: g == null,
-    quip: g == null ? "Gave up and dropped one in the pond. +3." : pick(QUIPS[res.hio ? "hio" : res.t])};
+    quip: g == null ? "Gave up and dropped one in the pond." : pick(QUIPS[res.hio ? "hio" : res.t])};
   state.shots[current] = shot; state.pending = null; store.set(KEY, state);
   await animateShot(res);
   const box = $("result"); box.innerHTML = revealHTML(hole, shot) + `<div class="next"><button class="btn gold" id="nextBtn">${current===HOLES-1?"Finish round 🏆":"Next hole →"}</button></div>`;

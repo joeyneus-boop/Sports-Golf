@@ -38,7 +38,7 @@ end $$;
 create or replace function public.scores_valid() returns trigger language plpgsql security definer set search_path = public as $$
 begin
   if (select sum(h) from unnest(new.holes) h) <> new.total
-     or exists (select 1 from unnest(new.holes) h where h < -3 or h > 3) then
+     or exists (select 1 from unnest(new.holes) h where h < -3 or h > 5) then
     raise exception 'invalid holes';
   end if;
   if new.day not between ((now() at time zone 'America/New_York')::date - 1)
