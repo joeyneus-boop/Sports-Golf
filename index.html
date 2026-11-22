@@ -155,7 +155,6 @@ header.top{display:flex;align-items:center;justify-content:space-between;gap:12p
           <li><span class="chip sc-meh">+1 / +2</span><span><b>Bogey</b> 21–30 off · <b>Double bogey</b> 31–40 off</span></li>
           <li><span class="chip sc-bad">+3</span><span><b>Triple bogey</b> 41+ off.</span></li>
           <li><span class="chip sc-water">3 strikes</span><span>A name that isn't on the leaderboard is a <b>strike</b>, and you swing again. Three strikes or <b>Give up</b> = <b>splash</b> (+3).</span></li>
-          <li><span class="chip sc-par">123</span><span><b>Number holes:</b> some holes name the player and ask for their <b>rank</b> (scored by spots off) or their <b>stat</b> (Hole in one within 0.5%, Eagle 2%, Birdie 5%, Par 10%, Bogey 20%, Double 35%).</span></li>
           <li><span class="chip sc-par">Ties</span><span>Broken by <b>total spots off</b> (a splash counts as 100), then fewest strikes.</span></li>
         </ul>
         <div class="field"><label for="nameIn">Your name</label><input id="nameIn" maxlength="20" placeholder="e.g. Tiger" autocomplete="nickname"></div>
@@ -374,10 +373,11 @@ function buildSchedule(uptoDay, sports){
     }
     today = chosen;
   }
-  if (today && uptoDay >= KIND_DAY) assignKinds(today, mulberry32(hashStr("kind:" + key + ":" + uptoDay)));
+  if (NUMBER_HOLES && today && uptoDay >= KIND_DAY) assignKinds(today, mulberry32(hashStr("kind:" + key + ":" + uptoDay)));
   return today;
 }
 // ---------- question kinds: "name" the player at a rank, guess a player's "value", or guess a player's "rank" ----------
+const NUMBER_HOLES = false;   // rank/stat holes are switched off for now; flip to true to bring them back
 const KIND_DAY = dayNum("2026-11-22") - dayNum(EPOCH);
 function assignKinds(holes, r){
   holes.forEach(h => h.kind = "name");
@@ -522,7 +522,7 @@ let NAME = store.get("sportsgolf:name") || "";
 function loadMix(){
   MIX = DMIX();
   ROUND = buildSchedule(DAY, dailySports());
-  KEY = "sportsgolf:" + TODAY + ":" + MIX;
+  KEY = "sportsgolf:" + TODAY + ":" + MIX + (TODAY === "2026-11-22" ? ":v2" : "");   // Nov 22 course changed mid-day, so start fresh
   state = store.get(KEY) || {shots: []};
   current = Math.min(state.shots.length, HOLES-1);
 }
@@ -1012,7 +1012,7 @@ function buildUnlimited(sports, seed){
     chosen.push({cat:c, rank, target: c.rows.find(r=>r[2]===rank), layout: hashStr("unl:"+seed+":"+c.id+":"+rank)});
   }
   for (let i = chosen.length-1; i>0; i--) { const j=Math.floor(rnd()*(i+1)); [chosen[i],chosen[j]]=[chosen[j],chosen[i]]; }
-  return assignKinds(chosen, mulberry32(hashStr("kind:unl:" + seed)));
+  return NUMBER_HOLES ? assignKinds(chosen, mulberry32(hashStr("kind:unl:" + seed))) : chosen;
 }
 function setTheme(seed){
   if (seed == null) { THEME = DAILY_THEME; COURSE_NAME = DAILY_NAME; }
